@@ -103,7 +103,7 @@ git commit -m "refactor: isolate Bluefy protocol core"
 - Produces: `SafeBaiyunCore.mergeDoors(current,incoming,idFactory)` → `{ doors, added, updated }`。
 - Produces: `SafeBaiyunStore.create(storage)` → `{ load(), save(doors) }`。
 
-- [ ] **Step 1: 写合法门禁规范化与逐字段错误测试**
+- [x] **Step 1: 写合法门禁规范化与逐字段错误测试**
 
 ```js
 assert.deepEqual(validateDoor({
@@ -116,16 +116,16 @@ assert.deepEqual(validateDoor({
 assert.equal(validateDoor({ name: "", mac: "x", bluetoothName: "", productKey: "1" }).ok, false);
 ```
 
-- [ ] **Step 2: 运行测试并确认新接口缺失**
+- [x] **Step 2: 运行测试并确认新接口缺失**
 
 Run: `node --test tests/door-config.test.mjs`
 Expected: FAIL，`validateDoor is not a function`。
 
-- [ ] **Step 3: 实现门禁规范化和校验**
+- [x] **Step 3: 实现门禁规范化和校验**
 
 校验规则：门名去首尾空格后 1–30 字；MAC 规范化为六段大写十六进制；蓝牙名只保留大写字母数字且 1–20 字；Key 为 16–32 位偶数长度十六进制。
 
-- [ ] **Step 4: 写导出、原子导入和重复合并测试**
+- [x] **Step 4: 写导出、原子导入和重复合并测试**
 
 ```js
 const text = exportDoorBundle([{ id: "local", ...door }]);
@@ -136,21 +136,21 @@ assert.deepEqual(mergeDoors([doorA], [{ ...doorA, name: "新东门" }], () => "n
 });
 ```
 
-- [ ] **Step 5: 运行测试确认失败，再实现 JSON 与合并接口**
+- [x] **Step 5: 运行测试确认失败，再实现 JSON 与合并接口**
 
 Run: `node --test tests/door-config.test.mjs`
 Expected before implementation: FAIL；after implementation: PASS。
 
-- [ ] **Step 6: 写存储损坏、保存和刷新恢复测试**
+- [x] **Step 6: 写存储损坏、保存和刷新恢复测试**
 
 使用内存实现 `{ getItem, setItem }`；断言损坏 JSON 返回 `{ doors: [], error }`，保存后新 store 实例能读回等价门禁。
 
-- [ ] **Step 7: 实现 `SafeBaiyunStore` 并运行全部测试**
+- [x] **Step 7: 实现 `SafeBaiyunStore` 并运行全部测试**
 
 Run: `node --test tests/*.test.mjs`
 Expected: 全部 PASS。
 
-- [ ] **Step 8: 提交数据层**
+- [x] **Step 8: 提交数据层**
 
 ```bash
 git add core.js store.js tests/door-config.test.mjs

@@ -42,6 +42,100 @@
     return String(value).toUpperCase().replace(/[^0-9A-Z]/g, "");
   }
 
+  function normalizeMac(value) {
+    const compact = String(value).toUpperCase().replace(/[\s:-]/g, "");
+    if (!/^[0-9A-F]{12}$/.test(compact)) return compact;
+    return compact.match(/../g).join(":");
+  }
+
+  function normalizeProductKey(value) {
+    return String(value).toUpperCase().replace(/[\s:-]/g, "");
+  }
+
+  function validateDoor(input = {}) {
+    const value = {
+      name: String(input.name ?? "").trim(),
+      mac: normalizeMac(input.mac ?? ""),
+      bluetoothName: normalizeBluetoothName(input.bluetoothName ?? ""),
+      productKey: normalizeProductKey(input.productKey ?? "")
+    };
+    const errors = {};
+
+    if (Array.from(value.name).length < 1 || Array.from(value.name).length > 30) {
+      errors.name = "门禁名需要 1–30 个字符";
+    }
+    if (!/^(?:[0-9A-F]{2}:){5}[0-9A-F]{2}$/.test(value.mac)) {
+      errors.mac = "MAC 需要包含 12 位十六进制字符";
+    }
+    if (!/^[0-9A-Z]{1,20}$/.test(value.bluetoothName)) {
+      errors.bluetoothName = "蓝牙名称需要 1–20 位字母或数字";
+    }
+    if (!/^[0-9A-F]{16,32}$/.test(value.productKey) || value.productKey.length % 2 !== 0) {
+      errors.productKey = "PRODUCT_KEY 需要 16–32 位偶数长度十六进制字符";
+    }
+
+    return { ok: Object.keys(errors).length === 0, errors, value };
+  }
+
+  function assertValidDoor(input, label) {
+    const result = validateDoor(input);
+    if (!result.ok) {
+      throw new Error(`${label}：${Object.values(result.errors).join("；")}`);
+    }
+    return result.value;
+  }
+
+  function exportDoorBundle(doors) {
+    if (!Array.isArray(doors)) throw new Error("门禁配置必须是数组");
+    const normalized = doors.map((door, index) => assertValidDoor(door, `第 ${index + 1} 个门禁配置无效`));
+    return JSON.stringify({ version: 1, doors: normalized }, null, 2);
+  }
+
+  function importDoorBundle(text) {
+    let bundle;
+    try {
+      bundle = JSON.parse(String(text));
+    } catch {
+      throw new Error("JSON 格式错误");
+    }
+    if (!bundle || bundle.version !== 1) throw new Error("不支持的配置版本");
+    if (!Array.isArray(bundle.doors)) throw new Error("配置中缺少 doors 数组");
+    return bundle.doors.map((door, index) => assertValidDoor(door, `第 ${index + 1} 个门禁配置无效`));
+  }
+
+  function doorIdentity(door) {
+    return `${door.mac}|${door.bluetoothName}`;
+  }
+
+  function mergeDoors(current, incoming, idFactory) {
+    if (!Array.isArray(current) || !Array.isArray(incoming)) throw new Error("门禁配置必须是数组");
+    const doors = current.map((door, index) => ({
+      id: String(door.id ?? ""),
+      ...assertValidDoor(door, `现有第 ${index + 1} 个门禁配置无效`)
+    }));
+    const positions = new Map(doors.map((door, index) => [doorIdentity(door), index]));
+    let added = 0;
+    let updated = 0;
+
+    incoming.forEach((door, index) => {
+      const normalized = assertValidDoor(door, `导入第 ${index + 1} 个门禁配置无效`);
+      const identity = doorIdentity(normalized);
+      const position = positions.get(identity);
+      if (position !== undefined) {
+        doors[position] = { id: doors[position].id, ...normalized };
+        updated += 1;
+        return;
+      }
+      if (typeof idFactory !== "function") throw new Error("新增门禁时缺少 id 生成器");
+      const next = { id: String(idFactory()), ...normalized };
+      positions.set(identity, doors.length);
+      doors.push(next);
+      added += 1;
+    });
+
+    return { doors, added, updated };
+  }
+
   function buildDeviceRequestOptions(value) {
     const bluetoothName = normalizeBluetoothName(value);
     if (!bluetoothName) throw new Error("iOS 必须填写蓝牙名称 bluetoothName");
@@ -166,6 +260,10 @@
     bytesToHex,
     parseMac,
     normalizeBluetoothName,
+    validateDoor,
+    exportDoorBundle,
+    importDoorBundle,
+    mergeDoors,
     buildDeviceRequestOptions,
     desEncryptBlock,
     buildUnlockFrame,
