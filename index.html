@@ -3,106 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0c0d0b">
   <meta name="color-scheme" content="dark">
-  <title>Bluefy 门禁链路验证器</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>门禁钥匙 · Bluefy</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-  <main class="shell">
-    <div class="topline">
-      <span class="prototype-mark">Prototype / 不保存密钥</span>
-      <span>Bluefy · Web Bluetooth</span>
-    </div>
-
-    <h1>把手机变成一把<br><em>临时蓝牙钥匙。</em></h1>
-    <p class="lede">这是 SafeBaiyun 协议的兼容性验证页。所有计算都在当前页面完成；关闭或刷新页面后，MAC、蓝牙名称与产品密钥会消失。</p>
-
-    <div class="grid">
-      <section class="panel">
-        <div class="panel-head">
-          <span>01 / 本地配置</span>
-          <span>不发起网络请求</span>
-        </div>
-        <div class="panel-body">
-          <div class="field">
-            <label class="field-label" for="mac">门锁蓝牙 MAC</label>
-            <input id="mac" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="AA:BB:CC:DD:EE:FF">
-            <span class="hint">iOS 无法用 MAC 搜索设备；这里的值仅用于构造协议帧。</span>
-          </div>
-
-          <div class="field">
-            <label class="field-label" for="bluetooth-name">蓝牙名称 / bluetoothName（iOS 必填）</label>
-            <input id="bluetooth-name" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="20" required aria-required="true" placeholder="如 BYXXXX">
-            <span class="hint">用于让 Bluefy 只显示名称完全匹配的门锁，不参与 DES 应答计算。</span>
-          </div>
-
-          <div class="field">
-            <label class="field-label" for="product-key">PRODUCT_KEY</label>
-            <div class="key-row">
-              <input id="product-key" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="至少 16 位十六进制字符">
-              <button id="reveal" class="reveal" type="button">显示</button>
-            </div>
-            <span class="hint">密钥只存在于页面内存，不写入 localStorage、Cookie 或日志。</span>
-          </div>
-
-          <label class="consent">
-            <input id="authorized" type="checkbox">
-            <span>我确认自己有权操作这台门锁，并理解“写入成功”不等于机械锁已经打开。</span>
-          </label>
-
-          <div class="actions">
-            <button id="unlock" class="primary" type="button">选择设备并尝试解锁</button>
-            <button id="disconnect" class="secondary" type="button" disabled>断开</button>
-          </div>
-        </div>
+  <div class="app-shell">
+    <main id="app-root">
+      <section class="boot-screen" aria-live="polite">
+        <span class="boot-mark" aria-hidden="true"></span>
+        <p>正在读取本地门禁…</p>
       </section>
-
-      <section class="panel">
-        <div class="panel-head">
-          <span>02 / 执行链路</span>
-          <span id="device-name">尚未选择设备</span>
-        </div>
-        <div class="panel-body">
-          <div class="status-line">
-            <span id="status-lamp" class="status-lamp" data-tone="idle"></span>
-            <div class="status-copy">
-              <strong id="status-title">等待配置</strong>
-              <span id="status-detail">请在 Bluefy 的 HTTPS 页面中运行</span>
-            </div>
-          </div>
-
-          <div class="steps">
-            <div class="step" id="step-select" data-state="idle"><span class="step-index">01</span><span>选择 BLE 设备</span><span class="step-state">等待</span></div>
-            <div class="step" id="step-connect" data-state="idle"><span class="step-index">02</span><span>连接目标服务</span><span class="step-state">等待</span></div>
-            <div class="step" id="step-read" data-state="idle"><span class="step-index">03</span><span>读取动态挑战</span><span class="step-state">等待</span></div>
-            <div class="step" id="step-compute" data-state="idle"><span class="step-index">04</span><span>计算 DES 应答</span><span class="step-state">等待</span></div>
-            <div class="step" id="step-write" data-state="idle"><span class="step-index">05</span><span>写入 20 字节帧</span><span class="step-state">等待</span></div>
-          </div>
-        </div>
-      </section>
-
-      <section class="panel diagnostics">
-        <div class="panel-head">
-          <span>03 / 诊断</span>
-          <button id="clear-log" class="reveal" type="button" style="position:static;height:auto;padding:0">清空日志</button>
-        </div>
-        <div class="panel-body">
-          <div class="checks">
-            <div class="check"><span>安全上下文</span><strong id="check-secure">检查中</strong></div>
-            <div class="check"><span>Web Bluetooth</span><strong id="check-bluetooth">检查中</strong></div>
-            <div class="check"><span>DES 标准向量</span><strong id="check-des">检查中</strong></div>
-          </div>
-          <pre id="log" aria-live="polite"></pre>
-          <details>
-            <summary>为什么设备列表里可能没有门锁？</summary>
-            <p>网页不能按 MAC 定位设备，因此页面会用 bluetoothName 过滤 Bluefy 的设备列表。请填写接口返回的完整蓝牙名称、靠近门锁并打开系统蓝牙；名称不一致时，门锁不会出现在列表中。</p>
-          </details>
-        </div>
-      </section>
-    </div>
-
-    <p class="footnote">固定服务 UUID：14839ac4-7d7e-415c-9a42-167340cf2339。此页面是兼容性原型，不应公开托管带有预填密钥的副本。</p>
-  </main>
+    </main>
+    <div id="session-root"></div>
+    <div id="overlay-root"></div>
+  </div>
+  <noscript>此页面需要启用 JavaScript 才能连接门锁。</noscript>
 
   <script defer src="./core.js"></script>
   <script defer src="./store.js"></script>

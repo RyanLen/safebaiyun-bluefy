@@ -221,7 +221,7 @@ git commit -m "refactor: make unlock flow reusable per door"
 - Consumes: `SafeBaiyunStore.create(localStorage)` 与 `SafeBaiyunBle.create(...)`。
 - Produces: `SafeBaiyunApp.renderHome(doors, session)`、`renderManage(doors)`、`renderEditor(draft,errors)`、`renderSession(session)`，均返回可直接插入容器的安全 HTML。
 
-- [ ] **Step 1: 写首页空状态和多门禁渲染测试**
+- [x] **Step 1: 写首页空状态和多门禁渲染测试**
 
 ```js
 assert.match(renderHome([], idle), /添加第一个门禁/);
@@ -231,16 +231,16 @@ assert.match(html, /东门/);
 assert.doesNotMatch(html, /0123456789ABCDEF/);
 ```
 
-- [ ] **Step 2: 运行并确认渲染接口缺失**
+- [x] **Step 2: 运行并确认渲染接口缺失**
 
 Run: `node --test tests/app-render.test.mjs`
 Expected: FAIL，无法加载 `app.js` 或接口不存在。
 
-- [ ] **Step 3: 实现语义页面骨架和安全渲染函数**
+- [x] **Step 3: 实现语义页面骨架和安全渲染函数**
 
 所有用户文本先经过 `escapeHtml`；首页卡片仅显示门名、蓝牙名和遮蔽后的 MAC。底部导航使用原生 `<button>`，通过 `aria-current` 表示当前页。
 
-- [ ] **Step 4: 实现设计令牌和手机布局**
+- [x] **Step 4: 实现设计令牌和手机布局**
 
 ```css
 :root {
@@ -255,11 +255,11 @@ Expected: FAIL，无法加载 `app.js` 或接口不存在。
 
 门禁按钮最小高度 64px；内容底部留出导航安全距离；390×844 与 430×932 不产生横向滚动。
 
-- [ ] **Step 5: 写 BLE 进行中、成功、失败状态渲染测试并实现**
+- [x] **Step 5: 写 BLE 进行中、成功、失败状态渲染测试并实现**
 
 进行中禁用同一门禁的重复点击；成功文案为“指令已写入”，错误状态提供 `retry` 和 `show-diagnostics` 动作。
 
-- [ ] **Step 6: 运行测试并提交 UI 壳层**
+- [x] **Step 6: 运行测试并提交 UI 壳层**
 
 Run: `node --test tests/*.test.mjs`
 Expected: 全部 PASS。
