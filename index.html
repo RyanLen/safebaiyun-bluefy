@@ -1,0 +1,830 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>Bluefy 门禁链路验证器</title>
+  <style>
+    :root {
+      --ink: #f0eadc;
+      --muted: #9e9a90;
+      --panel: #161714;
+      --panel-2: #1d1f1b;
+      --line: #33362f;
+      --accent: #ffb000;
+      --accent-dark: #b76400;
+      --ok: #7bd88f;
+      --bad: #ff6b57;
+      --idle: #686b63;
+      --shadow: 0 22px 60px rgba(0, 0, 0, .38);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { background: #0d0e0c; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 10% 0%, rgba(255, 176, 0, .12), transparent 34rem),
+        linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px),
+        #0d0e0c;
+      background-size: auto, 28px 28px, 28px 28px, auto;
+      font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button, input { font: inherit; }
+
+    .shell {
+      width: min(920px, calc(100% - 28px));
+      margin: 0 auto;
+      padding: max(28px, env(safe-area-inset-top)) 0 max(36px, env(safe-area-inset-bottom));
+    }
+
+    .topline {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 34px;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .prototype-mark {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--accent);
+    }
+
+    .prototype-mark::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 16px currentColor;
+    }
+
+    h1 {
+      max-width: 760px;
+      margin: 0;
+      font-family: Georgia, "Songti SC", serif;
+      font-size: clamp(38px, 9vw, 78px);
+      font-weight: 400;
+      letter-spacing: -.055em;
+      line-height: .94;
+    }
+
+    h1 em {
+      color: var(--accent);
+      font-style: italic;
+    }
+
+    .lede {
+      max-width: 680px;
+      margin: 24px 0 38px;
+      color: #c0bbae;
+      font-family: Georgia, "Songti SC", serif;
+      font-size: 17px;
+      line-height: 1.72;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(280px, .95fr);
+      gap: 16px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: linear-gradient(145deg, rgba(255,255,255,.025), transparent 34%), var(--panel);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 17px 18px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: .11em;
+      text-transform: uppercase;
+    }
+
+    .panel-body { padding: 20px 18px; }
+
+    .field { margin-bottom: 18px; }
+
+    label.field-label {
+      display: block;
+      margin-bottom: 8px;
+      color: #bcb7aa;
+      font-size: 12px;
+    }
+
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      min-height: 48px;
+      padding: 0 13px;
+      color: var(--ink);
+      border: 1px solid #45483f;
+      border-radius: 10px;
+      outline: none;
+      background: #0f100e;
+      font-size: 15px;
+      letter-spacing: .04em;
+      transition: border-color .18s ease, box-shadow .18s ease;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(255, 176, 0, .13);
+    }
+
+    .hint {
+      display: block;
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.55;
+    }
+
+    .key-row { position: relative; }
+
+    .key-row input { padding-right: 64px; }
+
+    .reveal {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      height: 36px;
+      padding: 0 10px;
+      color: var(--muted);
+      border: 0;
+      background: transparent;
+      font-size: 11px;
+    }
+
+    .consent {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      margin: 5px 0 20px;
+      color: #bcb7aa;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .consent input {
+      width: 18px;
+      height: 18px;
+      margin: 1px 0 0;
+      accent-color: var(--accent);
+      flex: 0 0 auto;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+    }
+
+    .primary, .secondary {
+      min-height: 50px;
+      border-radius: 11px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: transform .15s ease, opacity .15s ease, background .15s ease;
+    }
+
+    .primary {
+      color: #15120a;
+      background: var(--accent);
+      font-weight: 800;
+      letter-spacing: .02em;
+    }
+
+    .secondary {
+      padding: 0 16px;
+      color: #cac5b8;
+      border-color: #45483f;
+      background: #22241f;
+    }
+
+    .primary:active, .secondary:active { transform: translateY(2px); }
+    button:disabled { cursor: not-allowed; opacity: .42; }
+
+    .status-line {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 20px;
+      padding: 15px;
+      border: 1px solid #35382f;
+      border-radius: 12px;
+      background: #11120f;
+    }
+
+    .status-lamp {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--idle);
+      box-shadow: 0 0 0 5px rgba(104,107,99,.1);
+      flex: 0 0 auto;
+    }
+
+    .status-lamp[data-tone="working"] {
+      background: var(--accent);
+      box-shadow: 0 0 0 5px rgba(255,176,0,.12), 0 0 20px rgba(255,176,0,.5);
+      animation: pulse 1s ease-in-out infinite alternate;
+    }
+
+    .status-lamp[data-tone="ok"] { background: var(--ok); box-shadow: 0 0 18px rgba(123,216,143,.45); }
+    .status-lamp[data-tone="bad"] { background: var(--bad); box-shadow: 0 0 18px rgba(255,107,87,.42); }
+
+    @keyframes pulse { to { opacity: .46; } }
+
+    .status-copy strong { display: block; font-size: 13px; }
+    .status-copy span { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; }
+
+    .steps {
+      display: grid;
+      gap: 8px;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 28px 1fr auto;
+      align-items: center;
+      gap: 10px;
+      min-height: 44px;
+      padding: 0 12px;
+      border: 1px solid #30332c;
+      border-radius: 10px;
+      color: #c7c2b5;
+      background: #131410;
+      font-size: 12px;
+    }
+
+    .step-index { color: #71746b; }
+    .step-state { color: #71746b; font-size: 10px; text-transform: uppercase; }
+    .step[data-state="working"] { border-color: rgba(255,176,0,.52); }
+    .step[data-state="working"] .step-state { color: var(--accent); }
+    .step[data-state="done"] .step-state { color: var(--ok); }
+    .step[data-state="failed"] .step-state { color: var(--bad); }
+
+    .diagnostics {
+      grid-column: 1 / -1;
+      margin-top: 0;
+    }
+
+    .checks {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .check {
+      min-height: 62px;
+      padding: 11px 12px;
+      border: 1px solid #30332c;
+      border-radius: 10px;
+      background: #12130f;
+    }
+
+    .check span { display: block; color: var(--muted); font-size: 10px; text-transform: uppercase; }
+    .check strong { display: block; margin-top: 7px; font-size: 12px; }
+    .check strong.ok { color: var(--ok); }
+    .check strong.bad { color: var(--bad); }
+    .check strong.warn { color: var(--accent); }
+
+    pre {
+      min-height: 210px;
+      max-height: 360px;
+      margin: 0;
+      padding: 16px;
+      overflow: auto;
+      color: #c9c5b9;
+      border: 1px solid #30332c;
+      border-radius: 11px;
+      background: #090a08;
+      font-size: 11px;
+      line-height: 1.65;
+      white-space: pre-wrap;
+      word-break: break-all;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    details {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    summary { color: #d0cbbf; cursor: pointer; }
+
+    .footnote {
+      margin: 18px 4px 0;
+      color: #74776f;
+      font-size: 10px;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 720px) {
+      .grid { grid-template-columns: 1fr; }
+      .diagnostics { grid-column: auto; }
+      .checks { grid-template-columns: 1fr; }
+      .topline { align-items: flex-start; }
+      .actions { grid-template-columns: 1fr; }
+      .secondary { min-height: 44px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="topline">
+      <span class="prototype-mark">Prototype / 不保存密钥</span>
+      <span>Bluefy · Web Bluetooth</span>
+    </div>
+
+    <h1>把手机变成一把<br><em>临时蓝牙钥匙。</em></h1>
+    <p class="lede">这是 SafeBaiyun 协议的兼容性验证页。所有计算都在当前页面完成；关闭或刷新页面后，MAC 与产品密钥会消失。</p>
+
+    <div class="grid">
+      <section class="panel">
+        <div class="panel-head">
+          <span>01 / 本地配置</span>
+          <span>不发起网络请求</span>
+        </div>
+        <div class="panel-body">
+          <div class="field">
+            <label class="field-label" for="mac">门锁蓝牙 MAC</label>
+            <input id="mac" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="AA:BB:CC:DD:EE:FF">
+            <span class="hint">iOS 无法用 MAC 搜索设备；这里的值仅用于构造协议帧。</span>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="product-key">PRODUCT_KEY</label>
+            <div class="key-row">
+              <input id="product-key" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="至少 16 位十六进制字符">
+              <button id="reveal" class="reveal" type="button">显示</button>
+            </div>
+            <span class="hint">密钥只存在于页面内存，不写入 localStorage、Cookie 或日志。</span>
+          </div>
+
+          <label class="consent">
+            <input id="authorized" type="checkbox">
+            <span>我确认自己有权操作这台门锁，并理解“写入成功”不等于机械锁已经打开。</span>
+          </label>
+
+          <div class="actions">
+            <button id="unlock" class="primary" type="button">选择设备并尝试解锁</button>
+            <button id="disconnect" class="secondary" type="button" disabled>断开</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <span>02 / 执行链路</span>
+          <span id="device-name">尚未选择设备</span>
+        </div>
+        <div class="panel-body">
+          <div class="status-line">
+            <span id="status-lamp" class="status-lamp" data-tone="idle"></span>
+            <div class="status-copy">
+              <strong id="status-title">等待配置</strong>
+              <span id="status-detail">请在 Bluefy 的 HTTPS 页面中运行</span>
+            </div>
+          </div>
+
+          <div class="steps">
+            <div class="step" id="step-select" data-state="idle"><span class="step-index">01</span><span>选择 BLE 设备</span><span class="step-state">等待</span></div>
+            <div class="step" id="step-connect" data-state="idle"><span class="step-index">02</span><span>连接目标服务</span><span class="step-state">等待</span></div>
+            <div class="step" id="step-read" data-state="idle"><span class="step-index">03</span><span>读取动态挑战</span><span class="step-state">等待</span></div>
+            <div class="step" id="step-compute" data-state="idle"><span class="step-index">04</span><span>计算 DES 应答</span><span class="step-state">等待</span></div>
+            <div class="step" id="step-write" data-state="idle"><span class="step-index">05</span><span>写入 20 字节帧</span><span class="step-state">等待</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel diagnostics">
+        <div class="panel-head">
+          <span>03 / 诊断</span>
+          <button id="clear-log" class="reveal" type="button" style="position:static;height:auto;padding:0">清空日志</button>
+        </div>
+        <div class="panel-body">
+          <div class="checks">
+            <div class="check"><span>安全上下文</span><strong id="check-secure">检查中</strong></div>
+            <div class="check"><span>Web Bluetooth</span><strong id="check-bluetooth">检查中</strong></div>
+            <div class="check"><span>DES 标准向量</span><strong id="check-des">检查中</strong></div>
+          </div>
+          <pre id="log" aria-live="polite"></pre>
+          <details>
+            <summary>为什么设备列表里可能没有门锁？</summary>
+            <p>网页不能按 MAC 定位设备，因此 Bluefy 会显示附近设备供你选择。请靠近门锁、打开系统蓝牙，并尝试门锁在官方 App 中通常会出现的名称。选择错设备不会读到固定服务 UUID，页面会报错并停止。</p>
+          </details>
+        </div>
+      </section>
+    </div>
+
+    <p class="footnote">固定服务 UUID：14839ac4-7d7e-415c-9a42-167340cf2339。此页面是兼容性原型，不应公开托管带有预填密钥的副本。</p>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const SERVICE_UUID = "14839ac4-7d7e-415c-9a42-167340cf2339";
+      const IP = [58,50,42,34,26,18,10,2,60,52,44,36,28,20,12,4,62,54,46,38,30,22,14,6,64,56,48,40,32,24,16,8,57,49,41,33,25,17,9,1,59,51,43,35,27,19,11,3,61,53,45,37,29,21,13,5,63,55,47,39,31,23,15,7];
+      const FP = [40,8,48,16,56,24,64,32,39,7,47,15,55,23,63,31,38,6,46,14,54,22,62,30,37,5,45,13,53,21,61,29,36,4,44,12,52,20,60,28,35,3,43,11,51,19,59,27,34,2,42,10,50,18,58,26,33,1,41,9,49,17,57,25];
+      const E = [32,1,2,3,4,5,4,5,6,7,8,9,8,9,10,11,12,13,12,13,14,15,16,17,16,17,18,19,20,21,20,21,22,23,24,25,24,25,26,27,28,29,28,29,30,31,32,1];
+      const P = [16,7,20,21,29,12,28,17,1,15,23,26,5,18,31,10,2,8,24,14,32,27,3,9,19,13,30,6,22,11,4,25];
+      const PC1 = [57,49,41,33,25,17,9,1,58,50,42,34,26,18,10,2,59,51,43,35,27,19,11,3,60,52,44,36,63,55,47,39,31,23,15,7,62,54,46,38,30,22,14,6,61,53,45,37,29,21,13,5,28,20,12,4];
+      const PC2 = [14,17,11,24,1,5,3,28,15,6,21,10,23,19,12,4,26,8,16,7,27,20,13,2,41,52,31,37,47,55,30,40,51,45,33,48,44,49,39,56,34,53,46,42,50,36,29,32];
+      const SHIFTS = [1,1,2,2,2,2,2,2,1,2,2,2,2,2,2,1];
+      const SBOX = [
+        [[14,4,13,1,2,15,11,8,3,10,6,12,5,9,0,7],[0,15,7,4,14,2,13,1,10,6,12,11,9,5,3,8],[4,1,14,8,13,6,2,11,15,12,9,7,3,10,5,0],[15,12,8,2,4,9,1,7,5,11,3,14,10,0,6,13]],
+        [[15,1,8,14,6,11,3,4,9,7,2,13,12,0,5,10],[3,13,4,7,15,2,8,14,12,0,1,10,6,9,11,5],[0,14,7,11,10,4,13,1,5,8,12,6,9,3,2,15],[13,8,10,1,3,15,4,2,11,6,7,12,0,5,14,9]],
+        [[10,0,9,14,6,3,15,5,1,13,12,7,11,4,2,8],[13,7,0,9,3,4,6,10,2,8,5,14,12,11,15,1],[13,6,4,9,8,15,3,0,11,1,2,12,5,10,14,7],[1,10,13,0,6,9,8,7,4,15,14,3,11,5,2,12]],
+        [[7,13,14,3,0,6,9,10,1,2,8,5,11,12,4,15],[13,8,11,5,6,15,0,3,4,7,2,12,1,10,14,9],[10,6,9,0,12,11,7,13,15,1,3,14,5,2,8,4],[3,15,0,6,10,1,13,8,9,4,5,11,12,7,2,14]],
+        [[2,12,4,1,7,10,11,6,8,5,3,15,13,0,14,9],[14,11,2,12,4,7,13,1,5,0,15,10,3,9,8,6],[4,2,1,11,10,13,7,8,15,9,12,5,6,3,0,14],[11,8,12,7,1,14,2,13,6,15,0,9,10,4,5,3]],
+        [[12,1,10,15,9,2,6,8,0,13,3,4,14,7,5,11],[10,15,4,2,7,12,9,5,6,1,13,14,0,11,3,8],[9,14,15,5,2,8,12,3,7,0,4,10,1,13,11,6],[4,3,2,12,9,5,15,10,11,14,1,7,6,0,8,13]],
+        [[4,11,2,14,15,0,8,13,3,12,9,7,5,10,6,1],[13,0,11,7,4,9,1,10,14,3,5,12,2,15,8,6],[1,4,11,13,12,3,7,14,10,15,6,8,0,5,9,2],[6,11,13,8,1,4,10,7,9,5,0,15,14,2,3,12]],
+        [[13,2,8,4,6,15,11,1,10,9,3,14,5,0,12,7],[1,15,13,8,10,3,7,4,12,5,6,11,0,14,9,2],[7,11,4,1,9,12,14,2,0,6,10,13,15,3,5,8],[2,1,14,7,4,10,8,13,15,12,9,0,3,5,6,11]]
+      ];
+
+      function hexToBytes(value) {
+        const normalized = String(value).replace(/[\s:\-]/g, "").toUpperCase();
+        if (!normalized || normalized.length % 2 !== 0 || !/^[0-9A-F]+$/.test(normalized)) {
+          throw new Error("十六进制内容格式错误");
+        }
+        return Uint8Array.from(normalized.match(/../g).map(pair => Number.parseInt(pair, 16)));
+      }
+
+      function bytesToHex(bytes) {
+        return Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("").toUpperCase();
+      }
+
+      function parseMac(value) {
+        const bytes = hexToBytes(value);
+        if (bytes.length !== 6) throw new Error("MAC 必须正好包含 6 个字节");
+        return bytes;
+      }
+
+      function bytesToBigInt(bytes) {
+        let result = 0n;
+        for (const byte of bytes) result = (result << 8n) | BigInt(byte);
+        return result;
+      }
+
+      function bigIntToBytes(value, length) {
+        const out = new Uint8Array(length);
+        for (let index = length - 1; index >= 0; index -= 1) {
+          out[index] = Number(value & 0xffn);
+          value >>= 8n;
+        }
+        return out;
+      }
+
+      function permute(value, table, inputBits) {
+        let result = 0n;
+        for (const position of table) {
+          result = (result << 1n) | ((value >> BigInt(inputBits - position)) & 1n);
+        }
+        return result;
+      }
+
+      function rotateLeft28(value, shift) {
+        const mask = 0x0fffffffn;
+        return ((value << BigInt(shift)) | (value >> BigInt(28 - shift))) & mask;
+      }
+
+      function makeSubkeys(keyBytes) {
+        let key56 = permute(bytesToBigInt(keyBytes), PC1, 64);
+        let left = (key56 >> 28n) & 0x0fffffffn;
+        let right = key56 & 0x0fffffffn;
+        return SHIFTS.map(shift => {
+          left = rotateLeft28(left, shift);
+          right = rotateLeft28(right, shift);
+          return permute((left << 28n) | right, PC2, 56);
+        });
+      }
+
+      function feistel(right, subkey) {
+        const mixed = permute(right, E, 32) ^ subkey;
+        let substituted = 0n;
+        for (let index = 0; index < 8; index += 1) {
+          const chunk = Number((mixed >> BigInt((7 - index) * 6)) & 0x3fn);
+          const row = ((chunk & 0x20) >> 4) | (chunk & 0x01);
+          const column = (chunk >> 1) & 0x0f;
+          substituted = (substituted << 4n) | BigInt(SBOX[index][row][column]);
+        }
+        return permute(substituted, P, 32);
+      }
+
+      function desEncryptBlock(blockBytes, keyBytes) {
+        if (blockBytes.length !== 8 || keyBytes.length !== 8) {
+          throw new Error("DES 块和密钥必须各为 8 字节");
+        }
+        const subkeys = makeSubkeys(keyBytes);
+        const initial = permute(bytesToBigInt(blockBytes), IP, 64);
+        let left = (initial >> 32n) & 0xffffffffn;
+        let right = initial & 0xffffffffn;
+        for (const subkey of subkeys) {
+          const nextLeft = right;
+          const nextRight = left ^ feistel(right, subkey);
+          left = nextLeft;
+          right = nextRight;
+        }
+        return bigIntToBytes(permute((right << 32n) | left, FP, 64), 8);
+      }
+
+      function buildUnlockFrame(challenge, macBytes, productKeyBytes) {
+        if (!(challenge instanceof Uint8Array) || challenge.length === 0) throw new Error("门锁返回了空挑战值");
+        if (macBytes.length !== 6) throw new Error("MAC 长度错误");
+        if (productKeyBytes.length < 8) throw new Error("PRODUCT_KEY 至少需要 8 字节");
+
+        let sum = 0;
+        for (const byte of challenge) sum += byte;
+        for (const byte of productKeyBytes) sum += byte;
+
+        const rawLength = 2 + challenge.length;
+        const paddedLength = Math.ceil(rawLength / 8) * 8;
+        const padded = new Uint8Array(paddedLength);
+        padded[0] = sum & 0xff;
+        padded[1] = (sum >>> 8) & 0xff;
+        padded.set(challenge, 2);
+
+        const desKey = new Uint8Array(8);
+        desKey.set(productKeyBytes.slice(0, 8));
+        const encryptedBlock = desEncryptBlock(padded.slice(0, 8), desKey);
+
+        const frame = new Uint8Array(20);
+        frame.set([0xa5, 0x14, 0x05], 0);
+        frame.set(macBytes.slice(2, 6), 3);
+        frame.set([0x00, 0x01, 0x07], 7);
+        frame.set(encryptedBlock, 10);
+        frame[18] = 0x00;
+        frame[19] = 0x5a;
+
+        let checksumSum = 0;
+        for (const byte of frame) checksumSum += byte;
+        frame[18] = (~checksumSum) & 0xff;
+
+        return { frame, padded, encryptedBlock, sum };
+      }
+
+      function runDesSelfTest() {
+        const plain = hexToBytes("0123456789ABCDEF");
+        const key = hexToBytes("133457799BBCDFF1");
+        return bytesToHex(desEncryptBlock(plain, key)) === "85E813540F0AB405";
+      }
+
+      globalThis.SafeBaiyunCore = {
+        SERVICE_UUID,
+        hexToBytes,
+        bytesToHex,
+        parseMac,
+        desEncryptBlock,
+        buildUnlockFrame,
+        runDesSelfTest
+      };
+
+      const elements = {
+        mac: document.querySelector("#mac"),
+        productKey: document.querySelector("#product-key"),
+        authorized: document.querySelector("#authorized"),
+        unlock: document.querySelector("#unlock"),
+        disconnect: document.querySelector("#disconnect"),
+        reveal: document.querySelector("#reveal"),
+        clearLog: document.querySelector("#clear-log"),
+        log: document.querySelector("#log"),
+        statusLamp: document.querySelector("#status-lamp"),
+        statusTitle: document.querySelector("#status-title"),
+        statusDetail: document.querySelector("#status-detail"),
+        deviceName: document.querySelector("#device-name"),
+        checkSecure: document.querySelector("#check-secure"),
+        checkBluetooth: document.querySelector("#check-bluetooth"),
+        checkDes: document.querySelector("#check-des")
+      };
+
+      let selectedDevice = null;
+      let isBusy = false;
+
+      function log(message, tone = "info") {
+        const time = new Date().toLocaleTimeString("zh-CN", { hour12: false });
+        const marker = tone === "error" ? "ERR" : tone === "warn" ? "WRN" : "INF";
+        elements.log.textContent += `[${time}] ${marker}  ${message}\n`;
+        elements.log.scrollTop = elements.log.scrollHeight;
+      }
+
+      function setStatus(title, detail, tone = "idle") {
+        elements.statusTitle.textContent = title;
+        elements.statusDetail.textContent = detail;
+        elements.statusLamp.dataset.tone = tone;
+      }
+
+      function setStep(name, state) {
+        const element = document.querySelector(`#step-${name}`);
+        element.dataset.state = state;
+        const label = { idle: "等待", working: "进行中", done: "完成", failed: "失败" }[state];
+        element.querySelector(".step-state").textContent = label;
+      }
+
+      function resetSteps() {
+        ["select", "connect", "read", "compute", "write"].forEach(name => setStep(name, "idle"));
+      }
+
+      function setCheck(element, text, tone) {
+        element.textContent = text;
+        element.className = tone;
+      }
+
+      function dataViewToBytes(view) {
+        return new Uint8Array(view.buffer, view.byteOffset, view.byteLength).slice();
+      }
+
+      function onDisconnected() {
+        elements.disconnect.disabled = true;
+        log("BLE 连接已断开");
+      }
+
+      async function disconnect() {
+        if (selectedDevice?.gatt?.connected) selectedDevice.gatt.disconnect();
+        elements.disconnect.disabled = true;
+      }
+
+      async function startNotifications(characteristics) {
+        let count = 0;
+        for (const characteristic of characteristics) {
+          if (!characteristic.properties.notify && !characteristic.properties.indicate) continue;
+          try {
+            characteristic.addEventListener("characteristicvaluechanged", event => {
+              const value = dataViewToBytes(event.target.value);
+              log(`收到通知 ${characteristic.uuid}: ${bytesToHex(value)}`);
+            });
+            await characteristic.startNotifications();
+            count += 1;
+            log(`已订阅通知特征 ${characteristic.uuid}`);
+          } catch (error) {
+            log(`通知订阅失败 ${characteristic.uuid}: ${error.message}`, "warn");
+          }
+        }
+        return count;
+      }
+
+      async function writeCharacteristic(characteristic, value) {
+        if (characteristic.properties.write && typeof characteristic.writeValueWithResponse === "function") {
+          await characteristic.writeValueWithResponse(value);
+          return "withResponse";
+        }
+        if (characteristic.properties.write && typeof characteristic.writeValue === "function") {
+          await characteristic.writeValue(value);
+          return "legacy-withResponse";
+        }
+        if (characteristic.properties.writeWithoutResponse && typeof characteristic.writeValueWithoutResponse === "function") {
+          await characteristic.writeValueWithoutResponse(value);
+          return "withoutResponse";
+        }
+        if (typeof characteristic.writeValue === "function") {
+          await characteristic.writeValue(value);
+          return "legacy";
+        }
+        throw new Error("Bluefy 没有提供可用的特征写入方法");
+      }
+
+      async function runUnlock() {
+        if (isBusy) return;
+
+        let macBytes;
+        let productKeyBytes;
+        try {
+          if (!elements.authorized.checked) throw new Error("请先确认你有权操作这台门锁");
+          macBytes = parseMac(elements.mac.value);
+          productKeyBytes = hexToBytes(elements.productKey.value);
+          if (productKeyBytes.length < 8) throw new Error("PRODUCT_KEY 至少需要 16 位十六进制字符");
+          if (!window.isSecureContext) throw new Error("当前不是 HTTPS 安全页面，Web Bluetooth 会被浏览器拒绝");
+          if (!navigator.bluetooth) throw new Error("当前浏览器没有 Web Bluetooth，请确认正在 Bluefy 中打开");
+          if (!runDesSelfTest()) throw new Error("DES 自检失败，已阻止写入");
+        } catch (error) {
+          setStatus("配置未通过", error.message, "bad");
+          log(error.message, "error");
+          return;
+        }
+
+        isBusy = true;
+        elements.unlock.disabled = true;
+        resetSteps();
+        setStatus("正在选择设备", "请在系统列表中选择附近门锁", "working");
+
+        try {
+          setStep("select", "working");
+          selectedDevice = await navigator.bluetooth.requestDevice({
+            acceptAllDevices: true,
+            optionalServices: [SERVICE_UUID]
+          });
+          selectedDevice.addEventListener("gattserverdisconnected", onDisconnected);
+          elements.deviceName.textContent = selectedDevice.name || "未命名 BLE 设备";
+          elements.disconnect.disabled = false;
+          setStep("select", "done");
+          log(`已选择设备：${selectedDevice.name || "未命名设备"}`);
+
+          setStep("connect", "working");
+          setStatus("正在连接", "连接 GATT 并发现固定服务", "working");
+          const server = await selectedDevice.gatt.connect();
+          const service = await server.getPrimaryService(SERVICE_UUID);
+          const characteristics = await service.getCharacteristics();
+          const readableCandidates = characteristics.filter(item => item.properties.read);
+          const writeCandidates = characteristics.filter(item => item.properties.write);
+          const writeWithoutResponseCandidates = characteristics.filter(item => item.properties.writeWithoutResponse);
+          const readable = readableCandidates[readableCandidates.length - 1];
+          const writable = writeCandidates[writeCandidates.length - 1]
+            || writeWithoutResponseCandidates[writeWithoutResponseCandidates.length - 1];
+          if (!readable) throw new Error("目标服务中没有可读特征");
+          if (!writable) throw new Error("目标服务中没有可写特征");
+          setStep("connect", "done");
+          log(`服务已连接，共发现 ${characteristics.length} 个特征`);
+          log(`读取特征：${readable.uuid}`);
+          log(`写入特征：${writable.uuid}`);
+
+          const notificationCount = await startNotifications(characteristics);
+          if (notificationCount === 0) log("没有成功订阅通知特征；只能确认写入，无法确认门锁回执", "warn");
+
+          setStep("read", "working");
+          setStatus("正在读取挑战", "等待门锁返回动态字节", "working");
+          const challenge = dataViewToBytes(await readable.readValue());
+          if (challenge.length === 0) throw new Error("门锁返回了空挑战值");
+          setStep("read", "done");
+          log(`挑战值（${challenge.length} 字节）：${bytesToHex(challenge)}`);
+
+          setStep("compute", "working");
+          const computed = buildUnlockFrame(challenge, macBytes, productKeyBytes);
+          setStep("compute", "done");
+          log(`求和：${computed.sum}；DES 输入：${bytesToHex(computed.padded)}`);
+          log(`DES 首块：${bytesToHex(computed.encryptedBlock)}`);
+          log(`响应帧：${bytesToHex(computed.frame)}`);
+
+          setStep("write", "working");
+          setStatus("正在写入应答", "向门锁提交 20 字节响应帧", "working");
+          const writeMode = await writeCharacteristic(writable, computed.frame);
+          setStep("write", "done");
+          setStatus("响应帧已写入", "请观察门锁；此状态不是机械开锁确认", "ok");
+          log(`写入调用完成，模式：${writeMode}`);
+
+          await new Promise(resolve => setTimeout(resolve, 900));
+          await disconnect();
+        } catch (error) {
+          const active = ["select", "connect", "read", "compute", "write"]
+            .find(name => document.querySelector(`#step-${name}`).dataset.state === "working");
+          if (active) setStep(active, "failed");
+          setStatus("执行失败", `${error.name || "Error"}: ${error.message}`, "bad");
+          log(`${error.name || "Error"}: ${error.message}`, "error");
+          await disconnect();
+        } finally {
+          isBusy = false;
+          elements.unlock.disabled = false;
+        }
+      }
+
+      elements.unlock.addEventListener("click", runUnlock);
+      elements.disconnect.addEventListener("click", disconnect);
+      elements.reveal.addEventListener("click", () => {
+        const showing = elements.productKey.type === "text";
+        elements.productKey.type = showing ? "password" : "text";
+        elements.reveal.textContent = showing ? "显示" : "隐藏";
+      });
+      elements.clearLog.addEventListener("click", () => { elements.log.textContent = ""; });
+
+      const secure = window.isSecureContext;
+      const bluetooth = Boolean(navigator.bluetooth);
+      const desOk = runDesSelfTest();
+      setCheck(elements.checkSecure, secure ? "通过 / HTTPS" : "未通过 / 需要 HTTPS", secure ? "ok" : "bad");
+      setCheck(elements.checkBluetooth, bluetooth ? "可用" : "不可用 / 请用 Bluefy", bluetooth ? "ok" : "bad");
+      setCheck(elements.checkDes, desOk ? "通过" : "失败 / 已禁用", desOk ? "ok" : "bad");
+      log(`环境检查：HTTPS=${secure ? "YES" : "NO"}，WebBluetooth=${bluetooth ? "YES" : "NO"}，DES=${desOk ? "PASS" : "FAIL"}`);
+    })();
+  </script>
+</body>
+</html>
