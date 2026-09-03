@@ -341,7 +341,7 @@ Run: `python3 -m http.server 4173`
 Run: `rg -n 'fetch\(|XMLHttpRequest|sendBeacon|WebSocket' index.html app.js core.js store.js ble.js`
 Expected: 无匹配；完整 Key 只存在表单、内存、localStorage 与用户主动导出的 JSON 中，不进入日志或门禁卡片。
 
-- [ ] **Step 5: 提交文档并推送**
+- [x] **Step 5: 提交文档并推送**
 
 ```bash
 git add README.md docs/superpowers/plans/2026-09-04-mobile-keyring.md
@@ -349,6 +349,6 @@ git commit -m "docs: explain mobile keyring usage"
 git push origin main
 ```
 
-- [ ] **Step 6: 验证 GitHub Pages**
+- [x] **Step 6: 验证 GitHub Pages**
 
 访问 `https://ryanlen.github.io/safebaiyun-bluefy/?v=<commit>`，确认 HTTP 200、资源加载成功、页面包含“我的门禁”“新增门禁”“导入 JSON”，并确认 GitHub Pages 构建结论为 `success`。
