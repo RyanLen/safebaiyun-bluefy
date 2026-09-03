@@ -90,6 +90,21 @@ test("没有匹配的已授权设备时回退到名称过滤选择器", async ()
   }]);
 });
 
+test("读取已授权设备失败时仍会回退到设备选择器", async () => {
+  const fake = makeGattDevice();
+  let requestCount = 0;
+  const bluetooth = {
+    async getDevices() { throw new Error("not implemented"); },
+    async requestDevice() { requestCount += 1; return fake.device; }
+  };
+  const { context } = loadScripts(["core.js", "ble.js"]);
+
+  await context.SafeBaiyunBle.create({ bluetooth, wait: async () => {} }).unlock(door);
+
+  assert.equal(requestCount, 1);
+  assert.equal(fake.writes.length, 1);
+});
+
 test("取消设备选择会映射为可读错误事件", async () => {
   const cancelled = new Error("User cancelled");
   cancelled.name = "NotFoundError";

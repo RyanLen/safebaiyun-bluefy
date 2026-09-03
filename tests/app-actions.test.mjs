@@ -129,3 +129,28 @@ test("蓝牙断开事件不会覆盖已显示的成功或失败结果", () => {
   controller.handleBleEvent({ phase: "disconnected", tone: "idle", message: "已断开" });
   assert.equal(controller.getState().session.phase, "done");
 });
+
+test("解锁进行中拒绝启动第二个门禁会话", async () => {
+  let finishFirst;
+  let calls = 0;
+  const ble = {
+    unlock() {
+      calls += 1;
+      if (calls > 1) throw new Error("底层不应收到第二次调用");
+      return new Promise(resolve => { finishFirst = resolve; });
+    },
+    async disconnect() {}
+  };
+  const garageDoor = {
+    id: "garage", name: "车库", mac: "11:22:33:44:55:66",
+    bluetoothName: "BYGARAGE", productKey: "0011223344556677"
+  };
+  const { controller } = makeController({ store: makeStore([eastDoor, garageDoor]), ble });
+
+  const first = controller.unlock("east");
+  await assert.rejects(() => controller.unlock("garage"), /正在解锁“东门”/);
+  assert.equal(calls, 1);
+  assert.equal(controller.getState().session.doorId, "east");
+  finishFirst();
+  await first;
+});

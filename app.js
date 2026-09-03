@@ -22,10 +22,11 @@
   function renderHome(doors, session = {}) {
     const items = Array.isArray(doors) ? doors : [];
     const doorCards = items.map(door => {
-      const isBusy = session.doorId === door.id && !["idle", "done", "error", "disconnected"].includes(session.phase);
-      const label = isBusy ? "解锁中…" : "解锁";
+      const hasActiveSession = !["idle", "done", "error", "disconnected", undefined].includes(session.phase);
+      const isActive = hasActiveSession && session.doorId === door.id;
+      const label = isActive ? "解锁中…" : "解锁";
       return `
-        <article class="door-card${isBusy ? " is-active" : ""}">
+        <article class="door-card${isActive ? " is-active" : ""}">
           <div class="door-card__identity">
             <span class="door-icon">${renderDoorIcon()}</span>
             <div>
@@ -34,7 +35,7 @@
             </div>
           </div>
           <p class="door-card__mac">${escapeHtml(maskMac(door.mac))}</p>
-          <button class="unlock-button" type="button" data-action="unlock" data-id="${escapeHtml(door.id)}"${isBusy ? " disabled aria-busy=\"true\"" : ""}>
+          <button class="unlock-button" type="button" data-action="unlock" data-id="${escapeHtml(door.id)}"${hasActiveSession ? ` disabled${isActive ? ' aria-busy="true"' : ""}` : ""}>
             <span>${label}</span>
             <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 12h13M14 7l5 5-5 5"/></svg>
           </button>
@@ -359,6 +360,9 @@
     }
 
     async function unlock(id) {
+      if (!["idle", "done", "error", "disconnected"].includes(state.session.phase)) {
+        throw new Error(`正在解锁“${state.session.doorName}”，请稍候`);
+      }
       const door = state.doors.find(item => item.id === id);
       if (!door) throw new Error("门禁不存在");
       setState({

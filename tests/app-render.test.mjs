@@ -81,3 +81,14 @@ test("成功与失败状态提供明确结果和恢复动作", () => {
   assert.match(failure, /data-action="retry"/);
   assert.match(failure, /data-action="show-diagnostics"/);
 });
+
+test("有解锁会话进行时会暂时禁用全部门禁按钮", () => {
+  const { renderHome } = loadApp();
+  const session = {
+    phase: "read", doorId: "east", doorName: "东门", tone: "working",
+    message: "正在读取门锁挑战", detail: ""
+  };
+  const html = renderHome([eastDoor, garageDoor], session);
+
+  assert.equal((html.match(/data-action="unlock"[^>]*disabled/g) || []).length, 2);
+});

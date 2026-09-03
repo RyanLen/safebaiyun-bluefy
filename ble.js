@@ -72,9 +72,13 @@
     async function chooseDevice(door) {
       emit({ phase: "select", message: "正在查找已授权设备" });
       if (typeof bluetooth.getDevices === "function") {
-        const granted = await bluetooth.getDevices();
-        const match = granted.find(device => normalizeBluetoothName(device.name) === door.bluetoothName);
-        if (match) return match;
+        try {
+          const granted = await bluetooth.getDevices();
+          const match = granted.find(device => normalizeBluetoothName(device.name) === door.bluetoothName);
+          if (match) return match;
+        } catch {
+          emit({ phase: "select", tone: "warning", message: "无法读取已授权设备，将打开选择器" });
+        }
       }
       emit({ phase: "select", message: "请在列表中选择门锁" });
       return bluetooth.requestDevice(buildDeviceRequestOptions(door.bluetoothName));
