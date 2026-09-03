@@ -201,6 +201,7 @@ svg {
 
 .door-card h2 {
   margin: 0;
+  overflow-wrap: anywhere;
   font-size: 21px;
   letter-spacing: -.025em;
 }

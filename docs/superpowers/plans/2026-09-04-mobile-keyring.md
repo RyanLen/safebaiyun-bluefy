@@ -320,21 +320,23 @@ git commit -m "feat: manage and share door configurations"
 - Consumes: 所有前述模块和测试。
 - Produces: GitHub Pages 上可直接使用的完整移动端应用。
 
-- [ ] **Step 1: 更新 README**
+- [x] **Step 1: 更新 README**
 
 说明多门禁、明文本地存储、JSON 内含密钥、Bluefy 使用方式、清除本站数据的方法和测试命令 `node --test tests/*.test.mjs`。
 
-- [ ] **Step 2: 运行完整自动验证**
+- [x] **Step 2: 运行完整自动验证**
 
 Run: `node --test tests/*.test.mjs && git diff --check`
 Expected: 0 failures，退出码 0。
 
-- [ ] **Step 3: 启动本地静态服务器并检查手机视口**
+- [x] **Step 3: 启动本地静态服务器并检查手机视口**
 
 Run: `python3 -m http.server 4173`
 检查 390×844、430×932：无横向滚动；底部导航不遮挡按钮；空状态、两门禁列表、编辑页、导入导出和 BLE 状态层均可触达。
 
-- [ ] **Step 4: 运行安全检查**
+本地服务器与全部资源响应 200；当前执行环境没有可用浏览器实例，手机视口改由响应式约束审查和完整状态渲染测试覆盖，最终视觉仍需在 Bluefy 真机复核。
+
+- [x] **Step 4: 运行安全检查**
 
 Run: `rg -n 'fetch\(|XMLHttpRequest|sendBeacon|WebSocket' index.html app.js core.js store.js ble.js`
 Expected: 无匹配；完整 Key 只存在表单、内存、localStorage 与用户主动导出的 JSON 中，不进入日志或门禁卡片。
