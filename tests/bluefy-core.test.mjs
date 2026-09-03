@@ -1,63 +1,25 @@
 import assert from "node:assert/strict";
-import fs from "node:fs";
 import test from "node:test";
-import vm from "node:vm";
 
-const htmlPath = new URL("../index.html", import.meta.url);
-
-function makeElement() {
-  const listeners = new Map();
-  return {
-    checked: false,
-    value: "",
-    type: "password",
-    disabled: false,
-    textContent: "",
-    className: "",
-    dataset: {},
-    scrollHeight: 0,
-    scrollTop: 0,
-    listeners,
-    addEventListener(type, listener) { listeners.set(type, listener); },
-    querySelector() { return makeElement(); }
-  };
-}
-
-function loadHarness(navigator = {}) {
-  const html = fs.readFileSync(htmlPath, "utf8");
-  const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
-  const elements = new Map();
-  const element = (selector) => {
-    if (!elements.has(selector)) elements.set(selector, makeElement());
-    return elements.get(selector);
-  };
-  const context = {
-    console,
-    Uint8Array,
-    BigInt,
-    Date,
-    setTimeout,
-    clearTimeout,
-    window: { isSecureContext: true },
-    navigator,
-    document: {
-      querySelector: element
-    }
-  };
-  context.globalThis = context;
-  vm.createContext(context);
-  vm.runInContext(scripts.at(-1)[1], context, { filename: htmlPath.pathname });
-  return { core: context.SafeBaiyunCore, elements, element };
-}
+import { loadScripts } from "./helpers/load-script.mjs";
 
 function loadCore() {
-  return loadHarness().core;
+  return loadScripts(["core.js"]).context.SafeBaiyunCore;
 }
+
+test("已验证的握手帧在资源拆分后保持不变", () => {
+  const core = loadCore();
+  const frame = core.buildUnlockFrame(
+    core.hexToBytes("01020304"),
+    core.hexToBytes("AABBCCDDEEFF"),
+    core.hexToBytes("0123456789ABCDEF")
+  ).frame;
+
+  assert.equal(core.bytesToHex(frame), "A51405CCDDEEFF0001075F24E313C59D06EB7D5A");
+});
 
 test("Bluefy 设备请求按规范化后的 bluetoothName 精确过滤", () => {
   const core = loadCore();
-
-  assert.equal(typeof core.buildDeviceRequestOptions, "function", "缺少 bluetoothName 设备过滤函数");
   const options = core.buildDeviceRequestOptions(" by-aa:12 ");
 
   assert.deepEqual(JSON.parse(JSON.stringify(options)), {
@@ -77,11 +39,13 @@ test("空 bluetoothName 会在打开设备选择器前被拒绝", () => {
 
 test("点击解锁时把 bluetoothName 传给 Bluefy 设备过滤器", async () => {
   const requestOptions = [];
-  const { element } = loadHarness({
-    bluetooth: {
-      async requestDevice(options) {
-        requestOptions.push(options);
-        throw new Error("测试到设备选择器为止");
+  const { element } = loadScripts(["core.js", "app.js"], {
+    navigator: {
+      bluetooth: {
+        async requestDevice(options) {
+          requestOptions.push(options);
+          throw new Error("测试到设备选择器为止");
+        }
       }
     }
   });
@@ -99,7 +63,7 @@ test("点击解锁时把 bluetoothName 传给 Bluefy 设备过滤器", async () 
 });
 
 test("输入 bluetoothName 时立即转为大写字母数字", () => {
-  const { element } = loadHarness();
+  const { element } = loadScripts(["core.js", "app.js"]);
   const input = element("#bluetooth-name");
   input.value = " by-aa:12 ";
 

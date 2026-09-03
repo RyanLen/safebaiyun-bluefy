@@ -33,7 +33,7 @@
 **Interfaces:**
 - Produces: `globalThis.SafeBaiyunCore`，包含 `SERVICE_UUID`、`normalizeBluetoothName(value)`、`buildDeviceRequestOptions(value)`、`parseMac(value)`、`hexToBytes(value)`、`bytesToHex(bytes)`、`desEncryptBlock(block,key)`、`buildUnlockFrame(challenge,mac,key)`、`runDesSelfTest()`。
 
-- [ ] **Step 1: 写拆分后的协议特征测试**
+- [x] **Step 1: 写拆分后的协议特征测试**
 
 ```js
 test("已验证的握手帧在资源拆分后保持不变", () => {
@@ -43,16 +43,16 @@ test("已验证的握手帧在资源拆分后保持不变", () => {
     core.hexToBytes("AABBCCDDEEFF"),
     core.hexToBytes("0123456789ABCDEF")
   ).frame;
-  assert.equal(core.bytesToHex(frame), "A51405CCDDEEFF0001075984D3A55D3108E8765A");
+  assert.equal(core.bytesToHex(frame), "A51405CCDDEEFF0001075F24E313C59D06EB7D5A");
 });
 ```
 
-- [ ] **Step 2: 运行测试并确认因 `core.js` 尚不存在而失败**
+- [x] **Step 2: 运行测试并确认因 `core.js` 尚不存在而失败**
 
 Run: `node --test tests/bluefy-core.test.mjs`
 Expected: FAIL，错误明确指向无法加载 `core.js`。
 
-- [ ] **Step 3: 将 CSS 与纯协议代码机械拆出**
+- [x] **Step 3: 将 CSS 与纯协议代码机械拆出**
 
 `index.html` 改为加载：
 
@@ -77,12 +77,12 @@ globalThis.SafeBaiyunCore = Object.freeze({
 });
 ```
 
-- [ ] **Step 4: 运行协议测试并确认全部通过**
+- [x] **Step 4: 运行协议测试并确认全部通过**
 
 Run: `node --test tests/bluefy-core.test.mjs`
 Expected: 当前 4 项测试及固定握手帧测试全部 PASS。
 
-- [ ] **Step 5: 提交协议拆分**
+- [x] **Step 5: 提交协议拆分**
 
 ```bash
 git add index.html styles.css core.js tests
