@@ -740,6 +740,24 @@ svg {
   text-align: right;
 }
 
+.toast {
+  position: fixed;
+  z-index: 70;
+  top: max(14px, env(safe-area-inset-top));
+  left: 50%;
+  max-width: min(88vw, 440px);
+  padding: 11px 15px;
+  border: 1px solid #494a40;
+  border-radius: 10px;
+  background: #292b24;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .4);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 650;
+  text-align: center;
+  transform: translateX(-50%);
+}
+
 .boot-screen {
   display: grid;
   min-height: 100dvh;

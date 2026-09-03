@@ -235,6 +235,222 @@
       </nav>`;
   }
 
+  function renderToast(message) {
+    return message ? `<div class="toast" role="status">${escapeHtml(message)}</div>` : "";
+  }
+
+  function createController({ store, ble, clipboard, idFactory }) {
+    const {
+      exportDoorBundle,
+      importDoorBundle,
+      mergeDoors,
+      validateDoor
+    } = globalThis.SafeBaiyunCore;
+    const loaded = store.load();
+    const listeners = new Set();
+    const state = {
+      doors: loaded.doors,
+      view: "home",
+      draft: null,
+      errors: {},
+      session: { phase: "idle", doorId: null, doorName: "", message: "", detail: "" },
+      modal: null,
+      importValue: "",
+      importError: "",
+      toast: loaded.error
+    };
+
+    function snapshot() {
+      return {
+        ...state,
+        doors: state.doors.map(door => ({ ...door })),
+        draft: state.draft ? { ...state.draft } : null,
+        errors: { ...state.errors },
+        session: { ...state.session }
+      };
+    }
+
+    function publish() {
+      const value = snapshot();
+      listeners.forEach(listener => listener(value));
+    }
+
+    function setState(changes) {
+      Object.assign(state, changes);
+      publish();
+    }
+
+    function subscribe(listener) {
+      listeners.add(listener);
+      listener(snapshot());
+      return () => listeners.delete(listener);
+    }
+
+    function persist(doors) {
+      store.save(doors);
+      state.doors = doors;
+    }
+
+    function saveDoor(input) {
+      const result = validateDoor(input);
+      if (!result.ok) {
+        setState({ draft: { ...input }, errors: result.errors });
+        return result;
+      }
+
+      const id = String(input.id || "");
+      const position = state.doors.findIndex(door => door.id === id);
+      if (id && position < 0) {
+        const errors = { name: "要编辑的门禁已不存在" };
+        setState({ draft: { ...input }, errors });
+        return { ok: false, errors, value: result.value };
+      }
+      if (!id && state.doors.some(door => door.mac === result.value.mac && door.bluetoothName === result.value.bluetoothName)) {
+        const errors = { bluetoothName: "相同 MAC 与蓝牙名称的门禁已存在" };
+        setState({ draft: { ...input }, errors });
+        return { ok: false, errors, value: result.value };
+      }
+
+      const saved = { id: id || String(idFactory()), ...result.value };
+      const nextDoors = position >= 0
+        ? state.doors.map((door, index) => index === position ? saved : door)
+        : [...state.doors, saved];
+      persist(nextDoors);
+      setState({ view: "manage", draft: null, errors: {}, toast: "门禁已保存" });
+      return { ok: true, errors: {}, value: saved };
+    }
+
+    function deleteDoor(id) {
+      const nextDoors = state.doors.filter(door => door.id !== id);
+      if (nextDoors.length === state.doors.length) return false;
+      persist(nextDoors);
+      setState({ view: "manage", draft: null, errors: {}, toast: "门禁已删除" });
+      return true;
+    }
+
+    async function exportDoors() {
+      const text = exportDoorBundle(state.doors);
+      try {
+        await clipboard.writeText(text);
+      } catch {
+        throw new Error("复制失败，请允许剪贴板权限后重试");
+      }
+      setState({ toast: "配置 JSON 已复制" });
+      return text;
+    }
+
+    function importDoors(text) {
+      const incoming = importDoorBundle(text);
+      const merged = mergeDoors(state.doors, incoming, idFactory);
+      persist(merged.doors);
+      setState({
+        view: "manage",
+        modal: null,
+        importValue: "",
+        importError: "",
+        toast: `已导入：新增 ${merged.added}，更新 ${merged.updated}`
+      });
+      return { added: merged.added, updated: merged.updated };
+    }
+
+    function handleBleEvent(event) {
+      if (event.phase === "disconnected" && ["done", "error"].includes(state.session.phase)) return;
+      setState({ session: { ...state.session, ...event } });
+    }
+
+    async function unlock(id) {
+      const door = state.doors.find(item => item.id === id);
+      if (!door) throw new Error("门禁不存在");
+      setState({
+        session: {
+          phase: "select",
+          tone: "working",
+          doorId: door.id,
+          doorName: door.name,
+          message: "正在准备蓝牙",
+          detail: ""
+        }
+      });
+      try {
+        return await ble.unlock(door);
+      } catch (error) {
+        if (state.session.phase !== "error") {
+          handleBleEvent({ phase: "error", tone: "danger", message: error.message, detail: "" });
+        }
+        throw error;
+      }
+    }
+
+    function openHome() {
+      setState({ view: "home", draft: null, errors: {}, modal: null });
+    }
+
+    function openManage() {
+      setState({ view: "manage", draft: null, errors: {}, modal: null });
+    }
+
+    function startAdd() {
+      setState({ view: "editor", draft: {}, errors: {}, modal: null });
+    }
+
+    function startEdit(id) {
+      const door = state.doors.find(item => item.id === id);
+      if (!door) return false;
+      setState({ view: "editor", draft: { ...door }, errors: {}, modal: null });
+      return true;
+    }
+
+    function openImport() {
+      setState({ modal: "import", importValue: "", importError: "" });
+    }
+
+    function closeModal() {
+      setState({ modal: null, importError: "" });
+    }
+
+    function setImportError(importValue, importError) {
+      setState({ importValue, importError });
+    }
+
+    function showDiagnostics() {
+      setState({ modal: "diagnostics" });
+    }
+
+    function closeSession() {
+      setState({ session: { phase: "idle", doorId: null, doorName: "", message: "", detail: "" } });
+    }
+
+    function clearToast() {
+      if (state.toast) setState({ toast: null });
+    }
+
+    function setToast(toast) {
+      setState({ toast });
+    }
+
+    return Object.freeze({
+      getState: snapshot,
+      subscribe,
+      saveDoor,
+      deleteDoor,
+      exportDoors,
+      importDoors,
+      handleBleEvent,
+      unlock,
+      openHome,
+      openManage,
+      startAdd,
+      startEdit,
+      openImport,
+      closeModal,
+      setImportError,
+      showDiagnostics,
+      closeSession,
+      clearToast,
+      setToast
+    });
+  }
+
   globalThis.SafeBaiyunApp = Object.freeze({
     escapeHtml,
     renderHome,
@@ -243,6 +459,139 @@
     renderSession,
     renderImportPanel,
     renderDiagnostics,
-    renderNav
+    renderNav,
+    renderToast,
+    createController
+  });
+})();
+
+(() => {
+  "use strict";
+
+  if (!globalThis.document || !globalThis.SafeBaiyunStore || !globalThis.SafeBaiyunBle || !globalThis.SafeBaiyunCore) return;
+  const root = document.querySelector("#app-root");
+  const sessionRoot = document.querySelector("#session-root");
+  const overlayRoot = document.querySelector("#overlay-root");
+  const toastRoot = document.querySelector("#toast-root");
+  if (!root || !sessionRoot || !overlayRoot || !toastRoot) return;
+
+  const App = globalThis.SafeBaiyunApp;
+  const clipboard = {
+    async writeText(text) {
+      if (globalThis.navigator?.clipboard?.writeText) {
+        await globalThis.navigator.clipboard.writeText(text);
+        return;
+      }
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.append(textarea);
+      textarea.select();
+      const copied = document.execCommand("copy");
+      textarea.remove();
+      if (!copied) throw new Error("copy failed");
+    }
+  };
+  const idFactory = () => globalThis.crypto?.randomUUID?.()
+    || `door-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  let controller;
+  const ble = globalThis.SafeBaiyunBle.create({
+    bluetooth: globalThis.navigator?.bluetooth,
+    onEvent: event => controller?.handleBleEvent(event)
+  });
+  controller = App.createController({
+    store: globalThis.SafeBaiyunStore.create(globalThis.localStorage),
+    ble,
+    clipboard,
+    idFactory
+  });
+
+  let toastTimer;
+  controller.subscribe(state => {
+    if (state.view === "home") root.innerHTML = App.renderHome(state.doors, state.session) + App.renderNav("home");
+    if (state.view === "manage") root.innerHTML = App.renderManage(state.doors) + App.renderNav("manage");
+    if (state.view === "editor") root.innerHTML = App.renderEditor(state.draft, state.errors);
+    sessionRoot.innerHTML = App.renderSession(state.session);
+    overlayRoot.innerHTML = state.modal === "import"
+      ? App.renderImportPanel(state.importValue, state.importError)
+      : state.modal === "diagnostics" ? App.renderDiagnostics(state.session) : "";
+    toastRoot.innerHTML = App.renderToast(state.toast);
+    clearTimeout(toastTimer);
+    if (state.toast) toastTimer = setTimeout(() => controller.clearToast(), 2400);
+  });
+
+  async function runUnlock(id) {
+    try {
+      await controller.unlock(id);
+    } catch {
+      return;
+    }
+  }
+
+  document.addEventListener("click", async event => {
+    const backdrop = event.target.closest?.(".modal-backdrop");
+    if (backdrop && event.target === backdrop) {
+      controller.closeModal();
+      return;
+    }
+    const target = event.target.closest?.("[data-action]");
+    if (!target) return;
+    const action = target.dataset.action;
+    const id = target.dataset.id;
+
+    if (action === "nav-home") controller.openHome();
+    if (action === "nav-manage" || action === "back-manage") controller.openManage();
+    if (action === "add") controller.startAdd();
+    if (action === "edit") controller.startEdit(id);
+    if (action === "unlock" || action === "retry") await runUnlock(id);
+    if (action === "close-session") controller.closeSession();
+    if (action === "show-diagnostics") controller.showDiagnostics();
+    if (action === "close-diagnostics" || action === "close-import") controller.closeModal();
+    if (action === "open-import") controller.openImport();
+    if (action === "export") {
+      if (!globalThis.confirm("导出的 JSON 包含完整门禁密钥。确认复制到剪贴板？")) return;
+      try {
+        await controller.exportDoors();
+      } catch (error) {
+        controller.setToast(error.message);
+      }
+    }
+    if (action === "import") {
+      const value = document.querySelector("#import-json")?.value || "";
+      try {
+        controller.importDoors(value);
+      } catch (error) {
+        controller.setImportError(value, error.message);
+      }
+    }
+    if (action === "toggle-secret") {
+      const input = target.parentElement.querySelector("input");
+      const revealing = input.type === "password";
+      input.type = revealing ? "text" : "password";
+      target.textContent = revealing ? "隐藏" : "显示";
+    }
+    if (action === "delete") {
+      const door = controller.getState().doors.find(item => item.id === id);
+      if (door && globalThis.confirm(`确定删除“${door.name}”？此操作只影响本机。`)) controller.deleteDoor(id);
+    }
+  });
+
+  document.addEventListener("input", event => {
+    if (event.target.name === "bluetoothName") {
+      event.target.value = globalThis.SafeBaiyunCore.normalizeBluetoothName(event.target.value);
+    }
+    if (event.target.name === "mac") event.target.value = event.target.value.toUpperCase();
+    if (event.target.name === "productKey") event.target.value = event.target.value.toUpperCase();
+  });
+
+  document.addEventListener("submit", event => {
+    if (event.target.id !== "door-form") return;
+    event.preventDefault();
+    try {
+      controller.saveDoor(Object.fromEntries(new FormData(event.target)));
+    } catch (error) {
+      controller.setToast(`保存失败：${error.message}`);
+    }
   });
 })();

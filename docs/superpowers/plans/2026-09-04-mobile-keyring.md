@@ -281,29 +281,29 @@ git commit -m "feat: build mobile-first door keyring"
 - Produces: `SafeBaiyunApp.createController({ store, ble, clipboard, idFactory })`。
 - Controller methods: `addDoor(input)`、`updateDoor(id,input)`、`deleteDoor(id)`、`importJson(text)`、`exportJson()`、`unlockDoor(id)`。
 
-- [ ] **Step 1: 写新增、编辑、删除后立即持久化测试**
+- [x] **Step 1: 写新增、编辑、删除后立即持久化测试**
 
 断言合法新增返回门禁并调用一次 `store.save`；非法新增返回逐字段错误且不保存；更新保留 `id`；删除只影响目标门禁。
 
-- [ ] **Step 2: 运行确认控制器接口缺失，再实现最小 CRUD**
+- [x] **Step 2: 运行确认控制器接口缺失，再实现最小 CRUD**
 
 Run: `node --test tests/app-actions.test.mjs`
 Expected before implementation: FAIL；after implementation: CRUD tests PASS。
 
-- [ ] **Step 3: 写导出复制、剪贴板失败和原子导入测试**
+- [x] **Step 3: 写导出复制、剪贴板失败和原子导入测试**
 
 成功时断言写入剪贴板的文本可被 `importDoorBundle` 读回；剪贴板拒绝时返回 `{ copied:false,text }`；坏 JSON 不调用 `store.save`；重复导入返回准确 `added/updated`。
 
-- [ ] **Step 4: 实现编辑页、删除确认和导入导出底部面板**
+- [x] **Step 4: 实现编辑页、删除确认和导入导出底部面板**
 
 编辑页保持输入；导入面板包含多行文本框、合并规则说明和提交按钮；导出面板显示敏感配置警告、复制按钮及手动选择文本的后备区域。
 
-- [ ] **Step 5: 实现事件委托并运行全部测试**
+- [x] **Step 5: 实现事件委托并运行全部测试**
 
 Run: `node --test tests/*.test.mjs`
 Expected: 全部 PASS；用户提供的门名不得进入 `innerHTML` 未转义位置。
 
-- [ ] **Step 6: 提交管理与迁移功能**
+- [x] **Step 6: 提交管理与迁移功能**
 
 ```bash
 git add app.js index.html styles.css tests/app-actions.test.mjs
