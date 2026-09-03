@@ -169,16 +169,16 @@ git commit -m "feat: add local multi-door configuration"
 - Produces: `SafeBaiyunBle.create({ bluetooth, onEvent, wait })` → `{ unlock(door), disconnect() }`。
 - `onEvent({ phase, tone, message, detail? })` 的 `phase` 仅为 `select|connect|read|compute|write|done|error|disconnected`。
 
-- [ ] **Step 1: 写已授权设备命中测试**
+- [x] **Step 1: 写已授权设备命中测试**
 
 给 fake `bluetooth.getDevices()` 返回名称为 `BYAA12` 的设备；调用 `unlock(door)` 后断言未调用 `requestDevice()`，并最终把固定 20 字节帧写入 fake characteristic。
 
-- [ ] **Step 2: 运行并确认因 `ble.js` 缺失而失败**
+- [x] **Step 2: 运行并确认因 `ble.js` 缺失而失败**
 
 Run: `node --test tests/ble-session.test.mjs`
 Expected: FAIL，无法加载 `ble.js`。
 
-- [ ] **Step 3: 实现设备选择与现有 GATT 流程**
+- [x] **Step 3: 实现设备选择与现有 GATT 流程**
 
 ```js
 async function chooseDevice(door) {
@@ -193,16 +193,16 @@ async function chooseDevice(door) {
 
 连接、服务发现、通知订阅、挑战读取、帧写入沿用已经真机成功的顺序；写入后等待 900ms 再断开。
 
-- [ ] **Step 4: 写未授权设备回退、取消和 GATT 错误测试**
+- [x] **Step 4: 写未授权设备回退、取消和 GATT 错误测试**
 
 断言无匹配设备时调用带名称过滤的 `requestDevice()`；`NotFoundError` 映射为“已取消选择设备”；服务缺失映射为错误事件并执行断开。
 
-- [ ] **Step 5: 实现错误映射并运行全部测试**
+- [x] **Step 5: 实现错误映射并运行全部测试**
 
 Run: `node --test tests/*.test.mjs`
 Expected: 全部 PASS，固定握手帧不变。
 
-- [ ] **Step 6: 提交 BLE 会话层**
+- [x] **Step 6: 提交 BLE 会话层**
 
 ```bash
 git add ble.js index.html tests/ble-session.test.mjs
