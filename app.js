@@ -149,6 +149,17 @@
     return errors?.[name] ? `<span class="field-error">${escapeHtml(errors[name])}</span>` : "";
   }
 
+  function saveDoorForm(form, controller) {
+    const value = name => form?.elements?.namedItem(name)?.value ?? "";
+    return controller.saveDoor({
+      id: value("id"),
+      name: value("name"),
+      mac: value("mac"),
+      bluetoothName: value("bluetoothName"),
+      productKey: value("productKey")
+    });
+  }
+
   function renderEditor(draft = {}, errors = {}) {
     const editing = Boolean(draft.id);
     return `
@@ -185,7 +196,7 @@
             ${fieldError(errors, "productKey")}
           </label>
           <p class="form-warning">密钥只会保存在这台设备的浏览器本地，不会上传。</p>
-          <button class="action-button save-button" type="submit">保存门禁</button>
+          <button class="action-button save-button" type="button" data-action="save-door">保存门禁</button>
           ${editing ? `<button class="danger-button" type="button" data-action="delete" data-id="${escapeHtml(draft.id)}">删除此门禁</button>` : ""}
         </form>
       </section>`;
@@ -465,6 +476,7 @@
     renderDiagnostics,
     renderNav,
     renderToast,
+    saveDoorForm,
     createController
   });
 })();
@@ -548,6 +560,14 @@
     if (action === "nav-manage" || action === "back-manage") controller.openManage();
     if (action === "add") controller.startAdd();
     if (action === "edit") controller.startEdit(id);
+    if (action === "save-door") {
+      try {
+        const result = App.saveDoorForm(target.closest("form"), controller);
+        if (!result.ok) controller.setToast("请检查标红字段");
+      } catch (error) {
+        controller.setToast(`保存失败：${error.message}`);
+      }
+    }
     if (action === "unlock" || action === "retry") await runUnlock(id);
     if (action === "close-session") controller.closeSession();
     if (action === "show-diagnostics") controller.showDiagnostics();
@@ -593,7 +613,8 @@
     if (event.target.id !== "door-form") return;
     event.preventDefault();
     try {
-      controller.saveDoor(Object.fromEntries(new FormData(event.target)));
+      const result = App.saveDoorForm(event.target, controller);
+      if (!result.ok) controller.setToast("请检查标红字段");
     } catch (error) {
       controller.setToast(`保存失败：${error.message}`);
     }

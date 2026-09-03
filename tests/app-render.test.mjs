@@ -92,3 +92,10 @@ test("有解锁会话进行时会暂时禁用全部门禁按钮", () => {
 
   assert.equal((html.match(/data-action="unlock"[^>]*disabled/g) || []).length, 2);
 });
+
+test("保存按钮提供不依赖 submit 事件的直接点击动作", () => {
+  const { renderEditor } = loadApp();
+  const html = renderEditor({}, {});
+
+  assert.match(html, /type="button"[^>]*data-action="save-door"/);
+});

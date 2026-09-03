@@ -154,3 +154,25 @@ test("解锁进行中拒绝启动第二个门禁会话", async () => {
   finishFirst();
   await first;
 });
+
+test("直接保存表单会读取四个字段并写入本地存储", () => {
+  const { context, controller, store } = makeController();
+  const values = {
+    id: "",
+    name: "东门",
+    mac: "AA:BB:CC:DD:EE:FF",
+    bluetoothName: "BYAA12",
+    productKey: "0123456789ABCDEF"
+  };
+  const form = {
+    elements: {
+      namedItem(name) { return { value: values[name] }; }
+    }
+  };
+
+  const result = context.SafeBaiyunApp.saveDoorForm(form, controller);
+
+  assert.equal(result.ok, true);
+  assert.equal(store.persisted()[0].name, "东门");
+  assert.equal(store.persisted()[0].bluetoothName, "BYAA12");
+});
