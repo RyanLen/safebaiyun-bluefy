@@ -369,7 +369,7 @@
     </div>
 
     <h1>把手机变成一把<br><em>临时蓝牙钥匙。</em></h1>
-    <p class="lede">这是 SafeBaiyun 协议的兼容性验证页。所有计算都在当前页面完成；关闭或刷新页面后，MAC 与产品密钥会消失。</p>
+    <p class="lede">这是 SafeBaiyun 协议的兼容性验证页。所有计算都在当前页面完成；关闭或刷新页面后，MAC、蓝牙名称与产品密钥会消失。</p>
 
     <div class="grid">
       <section class="panel">
@@ -382,6 +382,12 @@
             <label class="field-label" for="mac">门锁蓝牙 MAC</label>
             <input id="mac" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="AA:BB:CC:DD:EE:FF">
             <span class="hint">iOS 无法用 MAC 搜索设备；这里的值仅用于构造协议帧。</span>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="bluetooth-name">蓝牙名称 / bluetoothName（iOS 必填）</label>
+            <input id="bluetooth-name" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="20" required aria-required="true" placeholder="如 BYXXXX">
+            <span class="hint">用于让 Bluefy 只显示名称完全匹配的门锁，不参与 DES 应答计算。</span>
           </div>
 
           <div class="field">
@@ -443,7 +449,7 @@
           <pre id="log" aria-live="polite"></pre>
           <details>
             <summary>为什么设备列表里可能没有门锁？</summary>
-            <p>网页不能按 MAC 定位设备，因此 Bluefy 会显示附近设备供你选择。请靠近门锁、打开系统蓝牙，并尝试门锁在官方 App 中通常会出现的名称。选择错设备不会读到固定服务 UUID，页面会报错并停止。</p>
+            <p>网页不能按 MAC 定位设备，因此页面会用 bluetoothName 过滤 Bluefy 的设备列表。请填写接口返回的完整蓝牙名称、靠近门锁并打开系统蓝牙；名称不一致时，门锁不会出现在列表中。</p>
           </details>
         </div>
       </section>
@@ -491,6 +497,19 @@
         const bytes = hexToBytes(value);
         if (bytes.length !== 6) throw new Error("MAC 必须正好包含 6 个字节");
         return bytes;
+      }
+
+      function normalizeBluetoothName(value) {
+        return String(value).toUpperCase().replace(/[^0-9A-Z]/g, "");
+      }
+
+      function buildDeviceRequestOptions(value) {
+        const bluetoothName = normalizeBluetoothName(value);
+        if (!bluetoothName) throw new Error("iOS 必须填写蓝牙名称 bluetoothName");
+        return {
+          filters: [{ name: bluetoothName }],
+          optionalServices: [SERVICE_UUID]
+        };
       }
 
       function bytesToBigInt(bytes) {
@@ -607,6 +626,8 @@
         hexToBytes,
         bytesToHex,
         parseMac,
+        normalizeBluetoothName,
+        buildDeviceRequestOptions,
         desEncryptBlock,
         buildUnlockFrame,
         runDesSelfTest
@@ -614,6 +635,7 @@
 
       const elements = {
         mac: document.querySelector("#mac"),
+        bluetoothName: document.querySelector("#bluetooth-name"),
         productKey: document.querySelector("#product-key"),
         authorized: document.querySelector("#authorized"),
         unlock: document.querySelector("#unlock"),
@@ -720,9 +742,11 @@
 
         let macBytes;
         let productKeyBytes;
+        let deviceRequestOptions;
         try {
           if (!elements.authorized.checked) throw new Error("请先确认你有权操作这台门锁");
           macBytes = parseMac(elements.mac.value);
+          deviceRequestOptions = buildDeviceRequestOptions(elements.bluetoothName.value);
           productKeyBytes = hexToBytes(elements.productKey.value);
           if (productKeyBytes.length < 8) throw new Error("PRODUCT_KEY 至少需要 16 位十六进制字符");
           if (!window.isSecureContext) throw new Error("当前不是 HTTPS 安全页面，Web Bluetooth 会被浏览器拒绝");
@@ -741,10 +765,7 @@
 
         try {
           setStep("select", "working");
-          selectedDevice = await navigator.bluetooth.requestDevice({
-            acceptAllDevices: true,
-            optionalServices: [SERVICE_UUID]
-          });
+          selectedDevice = await navigator.bluetooth.requestDevice(deviceRequestOptions);
           selectedDevice.addEventListener("gattserverdisconnected", onDisconnected);
           elements.deviceName.textContent = selectedDevice.name || "未命名 BLE 设备";
           elements.disconnect.disabled = false;
@@ -808,6 +829,9 @@
         }
       }
 
+      elements.bluetoothName.addEventListener("input", () => {
+        elements.bluetoothName.value = normalizeBluetoothName(elements.bluetoothName.value);
+      });
       elements.unlock.addEventListener("click", runUnlock);
       elements.disconnect.addEventListener("click", disconnect);
       elements.reveal.addEventListener("click", () => {
