@@ -91,7 +91,10 @@ test("每次设备选择器都使用 bluetoothName 精确过滤", async () => {
 
   assert.deepEqual(JSON.parse(JSON.stringify(requestOptions)), [{
     filters: [{ name: "BYAA12" }],
-    optionalServices: ["14839ac4-7d7e-415c-9a42-167340cf2339"]
+    optionalServices: [
+      "14839ac4-7d7e-415c-9a42-167340cf2339",
+      "0734594a-a8e7-4b1a-a6b1-cd5243059a57"
+    ]
   }]);
 });
 
@@ -149,4 +152,71 @@ test("GATT 服务错误会产生错误事件并断开设备", async () => {
   assert.equal(fake.gatt.connected, false);
   assert.equal(events.some(event => event.phase === "error"), true);
   assert.equal(events.at(-1).phase, "disconnected");
+});
+
+test("Bluefy 的普通对象错误会保留错误类型和失败阶段", async () => {
+  const rawError = { name: "NetworkError", errMsg: "The device is out of range" };
+  const events = [];
+  const { context } = loadScripts(["core.js", "ble.js"]);
+  const session = context.SafeBaiyunBle.create({
+    bluetooth: { async requestDevice() { throw rawError; } },
+    onEvent: event => events.push(event)
+  });
+
+  await assert.rejects(() => session.unlock(door), /蓝牙连接中断/);
+  const failure = events.find(event => event.phase === "error");
+  assert.equal(failure.failedStage, "select");
+  assert.equal(failure.errorName, "NetworkError");
+  assert.match(failure.errorDetail, /out of range/);
+});
+
+test("上一扇门的延迟断开事件不会污染下一扇门会话", async () => {
+  const first = makeGattDevice("BYAA12");
+  const second = makeGattDevice("BYGARAGE");
+  const listeners = [];
+  first.device.addEventListener = (type, listener) => {
+    if (type === "gattserverdisconnected") listeners.push(listener);
+  };
+  const selected = [first.device, second.device];
+  const events = [];
+  const { context } = loadScripts(["core.js", "ble.js"]);
+  const session = context.SafeBaiyunBle.create({
+    bluetooth: { async requestDevice() { return selected.shift(); } },
+    onEvent: event => events.push(event),
+    wait: async () => {}
+  });
+
+  await session.unlock(door);
+  const secondDoor = { ...door, id: "door-b", name: "车库", bluetoothName: "BYGARAGE" };
+  const secondUnlock = session.unlock(secondDoor);
+  listeners[0]?.();
+  await secondUnlock;
+
+  assert.equal(events.filter(event => event.phase === "disconnected").length, 2);
+});
+
+test("参考项目的第二服务候选可回退连接", async () => {
+  const fake = makeGattDevice();
+  const originalConnect = fake.gatt.connect;
+  fake.gatt.connect = async function connect() {
+    const server = await originalConnect.call(this);
+    const originalGetPrimaryService = server.getPrimaryService;
+    server.getPrimaryService = async uuid => {
+      if (uuid === "14839ac4-7d7e-415c-9a42-167340cf2339") {
+        const error = new Error("service not found");
+        error.name = "NotFoundError";
+        throw error;
+      }
+      return originalGetPrimaryService.call(server, uuid);
+    };
+    return server;
+  };
+  const { context } = loadScripts(["core.js", "ble.js"]);
+
+  await context.SafeBaiyunBle.create({
+    bluetooth: { async requestDevice() { return fake.device; } },
+    wait: async () => {}
+  }).unlock(door);
+
+  assert.equal(fake.writes.length, 1);
 });

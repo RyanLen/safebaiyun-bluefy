@@ -1,32 +1,18 @@
 <!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0c0d0b">
-  <meta name="color-scheme" content="dark">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>门禁钥匙 · Bluefy</title>
-  <link rel="stylesheet" href="./styles.css?v=20260904-3">
-</head>
-<body>
-  <div class="app-shell">
-    <main id="app-root">
-      <section class="boot-screen" aria-live="polite">
-        <span class="boot-mark" aria-hidden="true"></span>
-        <p>正在读取本地门禁…</p>
-      </section>
-    </main>
-    <div id="session-root"></div>
-    <div id="overlay-root"></div>
-    <div id="toast-root"></div>
-  </div>
-  <noscript>此页面需要启用 JavaScript 才能连接门锁。</noscript>
-
-  <script defer src="./core.js?v=20260904-3"></script>
-  <script defer src="./store.js?v=20260904-3"></script>
-  <script defer src="./ble.js?v=20260904-3"></script>
-  <script defer src="./app.js?v=20260904-3"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b0d0c" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>门禁钥匙 · Bluefy</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>此页面需要启用 JavaScript 才能连接门锁。</noscript>
+    <script>globalThis.__SAFEBAIYUN_REACT__ = true;</script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>

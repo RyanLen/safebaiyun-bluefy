@@ -10,108 +10,47 @@ const eastDoor = {
   bluetoothName: "BYAA12",
   productKey: "0123456789ABCDEF"
 };
-const garageDoor = {
-  id: "garage",
-  name: "车库",
-  mac: "11:22:33:44:55:66",
-  bluetoothName: "BYGARAGE",
-  productKey: "0011223344556677"
-};
-const idle = { phase: "idle", doorId: null, message: "", detail: "" };
 
-function loadApp() {
-  return loadScripts(["core.js", "app.js"]).context.SafeBaiyunApp;
+function makeStore(initial = []) {
+  let persisted = initial.map(door => ({ ...door }));
+  return {
+    load() { return { doors: persisted.map(door => ({ ...door })), error: null }; },
+    save(doors) { persisted = doors.map(door => ({ ...door })); },
+    persisted() { return persisted; }
+  };
 }
 
-test("首页空状态引导添加第一个门禁", () => {
-  const { renderHome } = loadApp();
-  const html = renderHome([], idle);
-
-  assert.match(html, /添加第一个门禁/);
-  assert.match(html, /data-action="add"/);
-});
-
-test("首页为每个门禁提供大号解锁按钮且绝不渲染密钥", () => {
-  const { renderHome } = loadApp();
-  const html = renderHome([eastDoor, garageDoor], idle);
-
-  assert.equal((html.match(/data-action="unlock"/g) || []).length, 2);
-  assert.match(html, /东门/);
-  assert.match(html, /车库/);
-  assert.doesNotMatch(html, /0123456789ABCDEF/);
-  assert.doesNotMatch(html, /0011223344556677/);
-});
-
-test("用户配置文本会在渲染前转义", () => {
-  const { renderHome } = loadApp();
-  const html = renderHome([{ ...eastDoor, name: '<img src=x onerror="alert(1)">' }], idle);
-
-  assert.doesNotMatch(html, /<img/);
-  assert.match(html, /&lt;img/);
-});
-
-test("解锁进行中会禁用当前门禁并显示阶段", () => {
-  const { renderHome, renderSession } = loadApp();
-  const session = {
-    phase: "connect",
-    doorId: "east",
-    doorName: "东门",
-    tone: "working",
-    message: "正在连接东门",
-    detail: ""
-  };
-
-  assert.match(renderHome([eastDoor], session), /data-action="unlock"[^>]*disabled/);
-  assert.match(renderSession(session), /正在连接东门/);
-  assert.match(renderSession(session), /连接门锁/);
-});
-
-test("成功与失败状态提供明确结果和恢复动作", () => {
-  const { renderSession } = loadApp();
-  const success = renderSession({
-    phase: "done", doorId: "east", doorName: "东门", tone: "success",
-    message: "指令已写入", detail: "请观察门锁"
-  });
-  const failure = renderSession({
-    phase: "error", doorId: "east", doorName: "东门", tone: "danger",
-    message: "蓝牙连接失败", detail: ""
+test("控制器初始化时暴露门禁状态和首页视图", () => {
+  const { context } = loadScripts(["core.js", "app.js"]);
+  const controller = context.SafeBaiyunApp.createController({
+    store: makeStore([eastDoor]),
+    ble: { async unlock() {}, async disconnect() {} },
+    clipboard: { async writeText() {} },
+    idFactory: () => "new-door"
   });
 
-  assert.match(success, /指令已写入/);
-  assert.match(failure, /data-action="retry"/);
-  assert.match(failure, /data-action="show-diagnostics"/);
+  assert.equal(controller.getState().view, "home");
+  assert.deepEqual(JSON.parse(JSON.stringify(controller.getState().doors)), [eastDoor]);
 });
 
-test("有解锁会话进行时会暂时禁用全部门禁按钮", () => {
-  const { renderHome } = loadApp();
-  const session = {
-    phase: "read", doorId: "east", doorName: "东门", tone: "working",
-    message: "正在读取门锁挑战", detail: ""
-  };
-  const html = renderHome([eastDoor, garageDoor], session);
+test("控制器会把 BLE 阶段诊断字段交给页面状态", () => {
+  const { context } = loadScripts(["core.js", "app.js"]);
+  const controller = context.SafeBaiyunApp.createController({
+    store: makeStore([eastDoor]),
+    ble: { async unlock() {}, async disconnect() {} },
+    clipboard: { async writeText() {} },
+    idFactory: () => "new-door"
+  });
 
-  assert.equal((html.match(/data-action="unlock"[^>]*disabled/g) || []).length, 2);
-});
+  controller.handleBleEvent({
+    phase: "error",
+    message: "未找到目标蓝牙服务",
+    failedStage: "service",
+    errorName: "NotFoundError",
+    errorDetail: "name=NotFoundError; message=service missing"
+  });
 
-test("保存按钮提供不依赖 submit 事件的直接点击动作", () => {
-  const { renderEditor } = loadApp();
-  const html = renderEditor({}, {});
-
-  assert.match(html, /type="button"[^>]*data-action="save-door"/);
-});
-
-test("导入弹层内部点击不会继承关闭动作", () => {
-  const { renderImportPanel } = loadApp();
-  const html = renderImportPanel();
-
-  assert.doesNotMatch(html, /<section class="modal-backdrop"[^>]*data-action=/);
-  assert.match(html, /<button[^>]*data-action="close-import"[^>]*>取消<\/button>/);
-});
-
-test("诊断弹层内部点击不会继承关闭动作", () => {
-  const { renderDiagnostics } = loadApp();
-  const html = renderDiagnostics({ phase: "error", message: "失败" });
-
-  assert.doesNotMatch(html, /<section class="modal-backdrop"[^>]*data-action=/);
-  assert.match(html, /<button[^>]*data-action="close-diagnostics"/);
+  assert.equal(controller.getState().session.failedStage, "service");
+  assert.equal(controller.getState().session.errorName, "NotFoundError");
+  assert.match(controller.getState().session.errorDetail, /service missing/);
 });

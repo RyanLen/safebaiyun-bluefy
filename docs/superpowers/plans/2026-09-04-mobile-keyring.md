@@ -1,12 +1,14 @@
 # Mobile Keyring Implementation Plan
 
+> 该早期原生 HTML/CSS 实施计划已由 `docs/superpowers/plans/2026-09-04-react-shadcn-refactor.md` 取代；其中的协议测试向量和数据约束继续作为回归依据。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 将已经能在 Bluefy 真机开锁的单门页面升级为可持久化多个门禁、首页一键发起开锁并支持 JSON 导入导出的移动端钥匙夹。
 
-**Architecture:** 保持无框架静态站点，把协议、存储、BLE 会话和 DOM 界面拆成传统 `defer` 脚本。核心数据与 BLE 依赖通过参数注入，使 Node 内置测试运行器可以在没有浏览器和门锁的环境中覆盖真实控制流。
+**Architecture:** 保持静态站点，把协议、存储、BLE 会话和 React 页面分层。核心数据与 BLE 依赖通过参数注入，使 Node 内置测试运行器可以在没有浏览器和门锁的环境中覆盖真实控制流。
 
-**Tech Stack:** HTML5、CSS、浏览器原生 JavaScript、Web Bluetooth、Web Storage、Clipboard API、Node.js `node:test`、GitHub Pages。
+**Tech Stack:** React、TypeScript、Vite、Tailwind CSS、Radix UI、Web Bluetooth、Web Storage、Clipboard API、Node.js `node:test`、GitHub Pages。
 
 **Spec:** `docs/superpowers/specs/2026-09-04-mobile-keyring-design.md`
 

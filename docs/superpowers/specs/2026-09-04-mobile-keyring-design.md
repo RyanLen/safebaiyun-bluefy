@@ -1,5 +1,7 @@
 # SafeBaiyun Bluefy 移动钥匙夹设计
 
+> 该早期原生 HTML/CSS 设计已由 `docs/superpowers/plans/2026-09-04-react-shadcn-refactor.md` 的 React + TypeScript 实现取代；协议、存储格式和交互约束仍然有效。
+
 ## 目标
 
 把现有单门验证页改造成只面向手机的多门禁工具。用户打开页面后应立即看到已保存门禁，并能从对应卡片发起 Bluefy 解锁；配置、导入和导出不得干扰这条主路径。
@@ -8,7 +10,7 @@
 
 - 只支持用户有权操作的门禁。
 - 运行环境为 iPhone 上支持 Web Bluetooth 的 Bluefy HTTPS 页面。
-- 纯静态 GitHub Pages，不使用账号、后端、框架、UI 库、CDN 或第三方字体。
+- 纯静态 GitHub Pages，不使用账号、后端、运行时 CDN 或第三方字体；页面构建使用 React + TypeScript。
 - 所有门禁参数只保存在当前浏览器的 `localStorage`；这是明文的同源存储，不承诺硬件级密钥保护。
 - 页面和日志不得主动上传、持久化或展示完整 `PRODUCT_KEY`。
 - 导出的 JSON 包含可用于解锁的密钥，界面必须明确提示只分享给获授权的人。

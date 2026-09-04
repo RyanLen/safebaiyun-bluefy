@@ -24,7 +24,10 @@ test("Bluefy 设备请求按规范化后的 bluetoothName 精确过滤", () => {
 
   assert.deepEqual(JSON.parse(JSON.stringify(options)), {
     filters: [{ name: "BYAA12" }],
-    optionalServices: ["14839ac4-7d7e-415c-9a42-167340cf2339"]
+    optionalServices: [
+      "14839ac4-7d7e-415c-9a42-167340cf2339",
+      "0734594a-a8e7-4b1a-a6b1-cd5243059a57"
+    ]
   });
 });
 
