@@ -46,12 +46,15 @@ function makeGattDevice(name = "BYAA12") {
   };
 }
 
-test("优先命中 Bluefy 已授权设备并写入固定解锁帧", async () => {
-  const fake = makeGattDevice();
+test("即使存在同名授权设备也沿用旧版选择器流程", async () => {
+  const stale = makeGattDevice();
+  stale.device.gatt.connect = async () => { throw new Error("缓存设备连接失败"); };
+  const fresh = makeGattDevice();
+  let getDevicesCount = 0;
   let requestCount = 0;
   const bluetooth = {
-    async getDevices() { return [fake.device]; },
-    async requestDevice() { requestCount += 1; throw new Error("不应打开选择器"); }
+    async getDevices() { getDevicesCount += 1; return [stale.device]; },
+    async requestDevice() { requestCount += 1; return fresh.device; }
   };
   const events = [];
   const { context } = loadScripts(["core.js", "ble.js"]);
@@ -63,17 +66,19 @@ test("优先命中 Bluefy 已授权设备并写入固定解锁帧", async () => 
 
   await session.unlock(door);
 
-  assert.equal(requestCount, 0);
-  assert.equal(fake.writes.length, 1);
+  assert.equal(getDevicesCount, 0);
+  assert.equal(requestCount, 1);
+  assert.equal(stale.writes.length, 0);
+  assert.equal(fresh.writes.length, 1);
   assert.equal(
-    context.SafeBaiyunCore.bytesToHex(fake.writes[0]),
+    context.SafeBaiyunCore.bytesToHex(fresh.writes[0]),
     "A51405CCDDEEFF0001075F24E313C59D06EB7D5A"
   );
   assert.equal(events.at(-1).phase, "disconnected");
   assert.equal(events.some(event => event.phase === "done"), true);
 });
 
-test("没有匹配的已授权设备时回退到名称过滤选择器", async () => {
+test("每次设备选择器都使用 bluetoothName 精确过滤", async () => {
   const fake = makeGattDevice();
   const requestOptions = [];
   const bluetooth = {
@@ -90,7 +95,7 @@ test("没有匹配的已授权设备时回退到名称过滤选择器", async ()
   }]);
 });
 
-test("读取已授权设备失败时仍会回退到设备选择器", async () => {
+test("选择器流程完全不依赖 getDevices", async () => {
   const fake = makeGattDevice();
   let requestCount = 0;
   const bluetooth = {
@@ -135,7 +140,7 @@ test("GATT 服务错误会产生错误事件并断开设备", async () => {
   const events = [];
   const { context } = loadScripts(["core.js", "ble.js"]);
   const session = context.SafeBaiyunBle.create({
-    bluetooth: { async getDevices() { return [fake.device]; } },
+    bluetooth: { async requestDevice() { return fake.device; } },
     onEvent: event => events.push(event),
     wait: async () => {}
   });

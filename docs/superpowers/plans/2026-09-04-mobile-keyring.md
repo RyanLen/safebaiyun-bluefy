@@ -157,7 +157,7 @@ git add core.js store.js tests/door-config.test.mjs
 git commit -m "feat: add local multi-door configuration"
 ```
 
-### Task 3: 可复用 BLE 解锁会话与已授权设备快路径
+### Task 3: 可复用 BLE 解锁会话与可靠设备选择
 
 **Files:**
 - Create: `ble.js`
@@ -169,9 +169,9 @@ git commit -m "feat: add local multi-door configuration"
 - Produces: `SafeBaiyunBle.create({ bluetooth, onEvent, wait })` → `{ unlock(door), disconnect() }`。
 - `onEvent({ phase, tone, message, detail? })` 的 `phase` 仅为 `select|connect|read|compute|write|done|error|disconnected`。
 
-- [x] **Step 1: 写已授权设备命中测试**
+- [x] **Step 1: 写每次重新选择设备测试**
 
-给 fake `bluetooth.getDevices()` 返回名称为 `BYAA12` 的设备；调用 `unlock(door)` 后断言未调用 `requestDevice()`，并最终把固定 20 字节帧写入 fake characteristic。
+给 `getDevices()` 返回一个无法连接的同名缓存设备，同时让 `requestDevice()` 返回正常设备；断言流程不调用 `getDevices()`，并最终把固定 20 字节帧写入正常设备。
 
 - [x] **Step 2: 运行并确认因 `ble.js` 缺失而失败**
 
@@ -182,16 +182,11 @@ Expected: FAIL，无法加载 `ble.js`。
 
 ```js
 async function chooseDevice(door) {
-  if (typeof bluetooth.getDevices === "function") {
-    const granted = await bluetooth.getDevices();
-    const match = granted.find(device => normalizeBluetoothName(device.name) === door.bluetoothName);
-    if (match) return match;
-  }
   return bluetooth.requestDevice(buildDeviceRequestOptions(door.bluetoothName));
 }
 ```
 
-连接、服务发现、通知订阅、挑战读取、帧写入沿用已经真机成功的顺序；写入后等待 900ms 再断开。
+Bluefy 的缓存设备句柄可能失效，因此每次都沿用旧版真机成功的设备选择器。连接、服务发现、通知订阅、挑战读取、帧写入顺序保持不变；写入后等待 900ms 再断开。
 
 - [x] **Step 4: 写未授权设备回退、取消和 GATT 错误测试**
 
