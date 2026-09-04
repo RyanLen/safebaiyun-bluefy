@@ -204,7 +204,7 @@
 
   function renderImportPanel(value = "", error = "") {
     return `
-      <section class="modal-backdrop" data-action="close-import">
+      <section class="modal-backdrop">
         <div class="modal-sheet" role="dialog" aria-modal="true" aria-labelledby="import-title" data-modal-body>
           <span class="sheet-handle" aria-hidden="true"></span>
           <h2 id="import-title">导入门禁 JSON</h2>
@@ -219,7 +219,7 @@
 
   function renderDiagnostics(session = {}) {
     return `
-      <section class="modal-backdrop" data-action="close-diagnostics">
+      <section class="modal-backdrop">
         <div class="modal-sheet" role="dialog" aria-modal="true" aria-labelledby="diagnostics-title" data-modal-body>
           <span class="sheet-handle" aria-hidden="true"></span>
           <h2 id="diagnostics-title">解锁诊断</h2>

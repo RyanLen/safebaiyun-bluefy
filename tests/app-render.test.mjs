@@ -99,3 +99,19 @@ test("保存按钮提供不依赖 submit 事件的直接点击动作", () => {
 
   assert.match(html, /type="button"[^>]*data-action="save-door"/);
 });
+
+test("导入弹层内部点击不会继承关闭动作", () => {
+  const { renderImportPanel } = loadApp();
+  const html = renderImportPanel();
+
+  assert.doesNotMatch(html, /<section class="modal-backdrop"[^>]*data-action=/);
+  assert.match(html, /<button[^>]*data-action="close-import"[^>]*>取消<\/button>/);
+});
+
+test("诊断弹层内部点击不会继承关闭动作", () => {
+  const { renderDiagnostics } = loadApp();
+  const html = renderDiagnostics({ phase: "error", message: "失败" });
+
+  assert.doesNotMatch(html, /<section class="modal-backdrop"[^>]*data-action=/);
+  assert.match(html, /<button[^>]*data-action="close-diagnostics"/);
+});
